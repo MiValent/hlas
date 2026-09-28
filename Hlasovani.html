@@ -628,35 +628,36 @@
         </div>
     </div>
 
-    <!-- FIREBASE MODULE & CLIENT SCRIPT -->
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, getDoc, setDoc, updateDoc, onSnapshot, collection, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+   <!-- FIREBASE MODULE & CLIENT SCRIPT -->
+<script type="module">
+    // Importy funkcí z CDN pro prohlížeč
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+    import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+    import { getFirestore, doc, getDoc, setDoc, updateDoc, onSnapshot, collection, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // APP PARAMS & FALLBACKS
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'edupoll-live-default';
-        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {
-            apiKey: "demo-api-key",
-            authDomain: "demo-project.firebaseapp.com",
-            projectId: "demo-project",
-            storageBucket: "demo-project.appspot.com",
-            messagingSenderId: "123456789",
-            appId: "1:123456789:web:123456"
-        };
+    // Firebase konfigurace
+    const firebaseConfig = {
+        apiKey: "AIzaSyA5wm0BqfTdlxsQ3zQ-i_tpua2R01NQ4Oc",
+        authDomain: "hlasovani-6d722.firebaseapp.com",
+        projectId: "hlasovani-6d722",
+        storageBucket: "hlasovani-6d722.firebasestorage.app",
+        messagingSenderId: "520308415470",
+        appId: "1:520308415470:web:ef73f0abf6068953314cff"
+    };
 
-        // Initialize Firebase
-        let app, db, auth;
-        let currentUser = null;
-        let unsubscribeRoomListener = null;
+    // Inicializace Firebase
+    let app, db, auth;
+    let currentUser = null;
+    let unsubscribeRoomListener = null;
 
-        try {
-            app = initializeApp(firebaseConfig);
-            db = getFirestore(app);
-            auth = getAuth(app);
-        } catch(err) {
-            console.warn("Firebase config is in fallback/demo mode:", err);
-        }
+    try {
+        app = initializeApp(firebaseConfig);
+        db = getFirestore(app);
+        auth = getAuth(app);
+        console.log("Firebase úspěšně inicializován");
+    } catch(err) {
+        console.warn("Chyba při inicializaci Firebase:", err);
+    }
 
         // Global Application State
         window.state = {
