@@ -24,6 +24,9 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <!-- html2pdf Library pro export do PDF -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <!-- Chart.js pro vykreslování grafů -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
     <!-- Firebase SDK -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
@@ -390,6 +393,22 @@
         </div>
     </div>
 
+    <!-- Modální okno pro Výsledky / Grafy -->
+    <div id="resultsModal" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-white dark:bg-slate-800 w-full max-w-2xl p-6 rounded-2xl shadow-xl space-y-4 relative max-h-[90vh] flex flex-col">
+            <div class="flex justify-between items-center border-b border-slate-200 dark:border-slate-700 pb-3">
+                <h3 id="modalResultsTitle" class="text-lg font-bold truncate pr-4">Výsledky hlasování</h3>
+                <button onclick="closeResultsModal()" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+            <div id="modalResultsContent" class="overflow-y-auto flex-grow space-y-6 pr-1"></div>
+            <div class="pt-3 border-t border-slate-200 dark:border-slate-700 flex justify-end">
+                <button onclick="closeResultsModal()" class="px-4 py-2 bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-200 font-medium rounded-lg hover:bg-slate-300 transition text-sm">Zavřít</button>
+            </div>
+        </div>
+    </div>
+
     <div id="helpModal" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
         <div class="bg-white dark:bg-slate-800 rounded-2xl max-w-md w-full p-6 shadow-xl border border-slate-200 dark:border-slate-700 relative">
             <button onclick="toggleHelpModal(false)" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
@@ -465,6 +484,7 @@
         let paceMode = 'teacher'; 
         let currentStudentName = '';
         let activeStudentQuestion = null;
+        let activeCharts = [];
 
         lucide.createIcons();
 
@@ -538,21 +558,174 @@
             showImagePreview(null);
         }
 
+        // --- VYPOČÍTÁNÍ UNIKÁTNÍCH RESPONDENTŮ ---
+        function calculateUniqueParticipants(answersList) {
+            if (!answersList || !Array.isArray(answersList)) return 0;
+            const uniqueStudents = new Set(answersList.map(a => a.student).filter(Boolean));
+            return uniqueStudents.size;
+        }
+
+        // --- ZOBRAZENÍ VÝSLEDKŮ V MODÁLNÍM OKNĚ S CHART.JS ---
+        function openResultsModal(title, pollQuestions, savedAnswers) {
+            const modal = document.getElementById('resultsModal');
+            const titleEl = document.getElementById('modalResultsTitle');
+            const contentEl = document.getElementById('modalResultsContent');
+
+            titleEl.innerText = `Výsledky: ${title}`;
+            contentEl.innerHTML = '';
+
+            // Vyčištění existujících grafů
+            activeCharts.forEach(chart => chart.destroy());
+            activeCharts = [];
+
+            const totalRespondents = calculateUniqueParticipants(savedAnswers);
+
+            const overviewDiv = document.createElement('div');
+            overviewDiv.className = "bg-sky-50 dark:bg-sky-950/40 border border-sky-200 dark:border-sky-800 p-3.5 rounded-xl text-sm flex justify-between items-center";
+            overviewDiv.innerHTML = `
+                <span class="font-medium text-sky-900 dark:text-sky-200">Unikátní respondenti:</span>
+                <span class="font-bold text-sky-700 dark:text-sky-400 text-base">${totalRespondents}</span>
+            `;
+            contentEl.appendChild(overviewDiv);
+
+            (pollQuestions || []).forEach((q, idx) => {
+                const qBox = document.createElement('div');
+                qBox.className = "p-4 border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-800/50 space-y-3";
+
+                let qHtml = `<h4 class="font-bold text-base text-slate-800 dark:text-slate-100">${idx + 1}. ${q.text}</h4>`;
+                const filteredAnswers = (savedAnswers || []).filter(a => String(a.questionId) === String(q.id));
+
+                if (q.type === 'mc') {
+                    const canvasId = `modal_chart_${idx}`;
+                    qHtml += `<div class="max-w-md mx-auto my-2"><canvas id="${canvasId}" class="max-h-56"></canvas></div>`;
+                    qBox.innerHTML = qHtml;
+                    contentEl.appendChild(qBox);
+
+                    const counts = {};
+                    (q.options || []).forEach(opt => counts[opt] = 0);
+                    filteredAnswers.forEach(a => { if (counts[a.answer] !== undefined) counts[a.answer]++; });
+
+                    setTimeout(() => {
+                        const ctx = document.getElementById(canvasId);
+                        if (ctx) {
+                            const newChart = new Chart(ctx, {
+                                type: 'bar',
+                                data: {
+                                    labels: Object.keys(counts),
+                                    datasets: [{
+                                        label: 'Počet hlasů',
+                                        data: Object.values(counts),
+                                        backgroundColor: '#0284c7',
+                                        borderRadius: 6
+                                    }]
+                                },
+                                options: {
+                                    responsive: true,
+                                    plugins: { legend: { display: false } },
+                                    scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } }
+                                }
+                            });
+                            activeCharts.push(newChart);
+                        }
+                    }, 50);
+
+                } else if (q.type === 'rating') {
+                    const canvasId = `modal_chart_${idx}`;
+                    qHtml += `<div class="max-w-md mx-auto my-2"><canvas id="${canvasId}" class="max-h-56"></canvas></div>`;
+                    qBox.innerHTML = qHtml;
+                    contentEl.appendChild(qBox);
+
+                    const counts = { '1': 0, '2': 0, '3': 0, '4': 0, '5': 0 };
+                    filteredAnswers.forEach(a => { if (counts[a.answer] !== undefined) counts[a.answer]++; });
+
+                    setTimeout(() => {
+                        const ctx = document.getElementById(canvasId);
+                        if (ctx) {
+                            const newChart = new Chart(ctx, {
+                                type: 'bar',
+                                data: {
+                                    labels: ['1 ★', '2 ★', '3 ★', '4 ★', '5 ★'],
+                                    datasets: [{
+                                        label: 'Hodnocení',
+                                        data: Object.values(counts),
+                                        backgroundColor: '#f59e0b',
+                                        borderRadius: 6
+                                    }]
+                                },
+                                options: {
+                                    responsive: true,
+                                    plugins: { legend: { display: false } },
+                                    scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } }
+                                }
+                            });
+                            activeCharts.push(newChart);
+                        }
+                    }, 50);
+
+                } else if (q.type === 'cloud') {
+                    const wordCounts = {};
+                    filteredAnswers.forEach(a => {
+                        const word = String(a.answer).trim();
+                        if (word) wordCounts[word] = (wordCounts[word] || 0) + 1;
+                    });
+
+                    qHtml += `<div class="flex flex-wrap gap-2 pt-1">`;
+                    const entries = Object.entries(wordCounts);
+                    if (entries.length === 0) {
+                        qHtml += `<span class="text-xs text-slate-400">Žádné odpovědi</span>`;
+                    } else {
+                        entries.forEach(([word, count]) => {
+                            qHtml += `<span class="px-2.5 py-1 rounded-lg text-xs font-bold bg-sky-100 dark:bg-sky-900/40 text-sky-700 dark:text-sky-300 border border-sky-200 dark:border-sky-800">${word} (${count}x)</span>`;
+                        });
+                    }
+                    qHtml += `</div>`;
+                    qBox.innerHTML = qHtml;
+                    contentEl.appendChild(qBox);
+
+                } else {
+                    qHtml += `<div class="space-y-1.5 max-h-40 overflow-y-auto pr-1">`;
+                    if (filteredAnswers.length === 0) {
+                        qHtml += `<span class="text-xs text-slate-400">Žádné odpovědi</span>`;
+                    } else {
+                        filteredAnswers.forEach(a => {
+                            qHtml += `<div class="p-2 bg-white dark:bg-slate-700 rounded border border-slate-200 dark:border-slate-600 text-xs"><strong>${a.student || 'Účastník'}:</strong> ${a.answer}</div>`;
+                        });
+                    }
+                    qHtml += `</div>`;
+                    qBox.innerHTML = qHtml;
+                    contentEl.appendChild(qBox);
+                }
+            });
+
+            modal.classList.remove('hidden');
+        }
+
+        function closeResultsModal() {
+            document.getElementById('resultsModal').classList.add('hidden');
+            activeCharts.forEach(chart => chart.destroy());
+            activeCharts = [];
+        }
+
         // --- EXPORT VŠECH OTÁZEK A VÝSLEDKŮ DO PDF ---
-        function downloadAllResultsPDF() {
-            const title = document.getElementById('pollTitleInput').value.trim() || 'vysledky_hlasovani';
+        function downloadAllResultsPDF(customTitle = null, customQuestions = null, customAnswers = null) {
+            const title = customTitle || document.getElementById('pollTitleInput').value.trim() || 'vysledky_hlasovani';
+            const pollQuestions = customQuestions || questions;
+            const pollAnswers = customAnswers || sessionAnswers;
+
             const pdfContainer = document.getElementById('pdfExportContainer');
             pdfContainer.innerHTML = '';
+
+            const uniqueCount = calculateUniqueParticipants(pollAnswers);
 
             const header = document.createElement('div');
             header.className = "border-b border-slate-300 pb-4 mb-6";
             header.innerHTML = `
                 <h1 class="text-2xl font-bold text-sky-600">${title}</h1>
-                <p class="text-sm text-slate-500">Vygenerováno z Hlasuj.to | PIN: ${currentSessionPin} | Celkem odpovídajících: ${participantsCount}</p>
+                <p class="text-sm text-slate-500">Vygenerováno z Hlasuj.to | Celkem unikátních respondentů: ${uniqueCount}</p>
             `;
             pdfContainer.appendChild(header);
 
-            questions.forEach((q, idx) => {
+            pollQuestions.forEach((q, idx) => {
                 const qBox = document.createElement('div');
                 qBox.className = "mb-8 p-4 border border-slate-200 rounded-xl bg-slate-50";
 
@@ -562,7 +735,7 @@
                     qHtml += `<div class="mb-4"><img src="${q.imageUrl}" class="max-h-40 rounded border border-slate-300"></div>`;
                 }
 
-                const filteredAnswers = sessionAnswers.filter(a => String(a.questionId) === String(q.id));
+                const filteredAnswers = pollAnswers.filter(a => String(a.questionId) === String(q.id));
 
                 if (q.type === 'mc') {
                     const counts = {};
@@ -695,18 +868,21 @@
                     const p = docSnap.data();
                     const pollId = docSnap.id;
                     const answersCount = p.savedAnswers ? p.savedAnswers.length : 0;
+                    const respondentsCount = calculateUniqueParticipants(p.savedAnswers);
 
                     const card = document.createElement('div');
                     card.className = "p-3 bg-slate-50 dark:bg-slate-700/50 rounded-lg border border-slate-200 dark:border-slate-600 flex flex-col justify-between space-y-2";
                     card.innerHTML = `
                         <div>
                             <div class="font-bold text-sm text-slate-800 dark:text-slate-100 truncate">${p.title}</div>
-                            <div class="text-xs text-slate-400">${p.questions ? p.questions.length : 0} otázek | ${answersCount} odpovědí</div>
+                            <div class="text-xs text-slate-400">${p.questions ? p.questions.length : 0} otázek | ${respondentsCount} respondentů (${answersCount} odp.)</div>
                         </div>
-                        <div class="flex items-center space-x-1 pt-1">
+                        <div class="flex flex-wrap items-center gap-1 pt-1 border-t border-slate-200 dark:border-slate-600">
                             <button onclick="openPollFromCloud('${pollId}', '${p.title.replace(/'/g, "\\'")}')" class="px-2 py-1 bg-sky-600 text-white rounded text-xs hover:bg-sky-700 transition">Otevřít</button>
+                            <button onclick="viewResultsFromCloud('${pollId}')" class="px-2 py-1 bg-emerald-600 text-white text-xs rounded hover:bg-emerald-700 transition flex items-center gap-1">📊 Výsledky</button>
+                            <button onclick="downloadPdfFromCloud('${pollId}')" class="px-2 py-1 bg-red-600 text-white text-xs rounded hover:bg-red-700 transition flex items-center gap-1">📄 PDF</button>
                             <button onclick="duplicatePollFromCloud('${pollId}')" class="px-2 py-1 bg-slate-200 dark:bg-slate-600 text-xs rounded hover:bg-slate-300 transition">Duplikovat</button>
-                            <button onclick="deletePollFromCloud('${pollId}')" class="px-2 py-1 text-red-500 hover:text-red-700 text-xs transition"><i data-lucide="trash-2" class="w-3.5 h-3.5"></i></button>
+                            <button onclick="deletePollFromCloud('${pollId}')" class="px-2 py-1 text-red-500 hover:text-red-700 text-xs transition ml-auto"><i data-lucide="trash-2" class="w-3.5 h-3.5"></i></button>
                         </div>
                     `;
                     container.appendChild(card);
@@ -717,15 +893,41 @@
             }
         }
 
-        async function openPollFromCloud(pollId, title) {
-            const { collection, where, query, getDocs } = window.fbModules;
+        async function viewResultsFromCloud(pollId) {
+            const { doc, getDoc } = window.fbModules;
             try {
-                const pollDoc = await getDocs(query(collection(window.db, "polls"), where("__name__", "==", pollId)));
-                pollDoc.forEach(d => {
-                    const data = d.data();
+                const pollDoc = await getDoc(doc(window.db, "polls", pollId));
+                if (pollDoc.exists()) {
+                    const data = pollDoc.data();
+                    openResultsModal(data.title, data.questions || [], data.savedAnswers || []);
+                }
+            } catch (e) {
+                console.error("Chyba zobrazení výsledků:", e);
+            }
+        }
+
+        async function downloadPdfFromCloud(pollId) {
+            const { doc, getDoc } = window.fbModules;
+            try {
+                const pollDoc = await getDoc(doc(window.db, "polls", pollId));
+                if (pollDoc.exists()) {
+                    const data = pollDoc.data();
+                    downloadAllResultsPDF(data.title, data.questions || [], data.savedAnswers || []);
+                }
+            } catch (e) {
+                console.error("Chyba při generování PDF z cloudu:", e);
+            }
+        }
+
+        async function openPollFromCloud(pollId, title) {
+            const { doc, getDoc } = window.fbModules;
+            try {
+                const pollDoc = await getDoc(doc(window.db, "polls", pollId));
+                if (pollDoc.exists()) {
+                    const data = pollDoc.data();
                     questions = data.questions || [];
                     sessionAnswers = data.savedAnswers || [];
-                    currentPollId = d.id;
+                    currentPollId = pollDoc.id;
                     paceMode = data.paceMode || 'teacher';
                     document.getElementById('paceModePrepSelect').value = paceMode;
                     document.getElementById('pollTitleInput').value = data.title || title;
@@ -733,7 +935,7 @@
                     renderQuestionsList();
                     loadCurrentQuestionToEditor();
                     alert(`Načtena sada a uložené výsledky: ${data.title}`);
-                });
+                }
             } catch (e) {
                 console.error("Chyba při otevírání:", e);
             }
@@ -741,12 +943,11 @@
 
         async function duplicatePollFromCloud(pollId) {
             if (!window.currentUser) return;
-            const { collection, addDoc, query, where, getDocs } = window.fbModules;
+            const { doc, getDoc, collection, addDoc } = window.fbModules;
             try {
-                const q = query(collection(window.db, "polls"), where("__name__", "==", pollId));
-                const snap = await getDocs(q);
-                snap.forEach(async (docSnap) => {
-                    const data = docSnap.data();
+                const pollDoc = await getDoc(doc(window.db, "polls", pollId));
+                if (pollDoc.exists()) {
+                    const data = pollDoc.data();
                     const newPoll = {
                         uid: window.currentUser.uid,
                         title: `Kopie: ${data.title}`,
@@ -758,7 +959,7 @@
                     await addDoc(collection(window.db, "polls"), newPoll);
                     alert("Kopie byla úspěšně vytvořena!");
                     loadUserPolls();
-                });
+                }
             } catch (e) {
                 console.error("Chyba duplikace:", e);
             }
@@ -1192,10 +1393,8 @@
                     const data = docSnap.data();
                     sessionAnswers = data.answers || [];
                     
-                    if (data.participants) {
-                        participantsCount = Object.keys(data.participants).length;
-                        document.getElementById('presCount').innerText = `Účastníci: ${participantsCount}`;
-                    }
+                    participantsCount = calculateUniqueParticipants(sessionAnswers);
+                    document.getElementById('presCount').innerText = `Účastníci: ${participantsCount}`;
 
                     updatePresentationView();
                     updateStudentResponseState();
@@ -1447,7 +1646,13 @@
             clearAuthError();
             if (!window.auth) return showAuthError("Firebase není inicializován.");
             const { signInWithPopup, GoogleAuthProvider } = window.fbModules;
+            
             const provider = new GoogleAuthProvider();
+            // Vynucení výběru účtu při přihlášení Googlem
+            provider.setCustomParameters({
+                prompt: 'select_account'
+            });
+
             signInWithPopup(window.auth, provider)
                 .then(res => { closeAuthModal(); updateAuthUI(res.user); })
                 .catch(err => showAuthError(err.message || "Nepodařilo se přihlásit přes Google."));
@@ -1479,12 +1684,16 @@
             const statusDiv = document.getElementById('authStatus');
             if (user) {
                 statusDiv.innerHTML = `
-                    <span class="text-sm font-medium">${user.displayName || user.email}</span>
-                    <button onclick="logout()" class="px-2.5 py-1 bg-slate-200 dark:bg-slate-700 text-xs rounded hover:bg-slate-300">Odhlásit</button>
+                    <span class="text-sm font-medium hidden sm:inline">${user.displayName || user.email}</span>
+                    <button onclick="logout()" class="px-3 py-1.5 bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-xs font-semibold rounded-lg transition flex items-center gap-1">
+                        <i data-lucide="log-out" class="w-3.5 h-3.5"></i>
+                        <span>Odhlásit</span>
+                    </button>
                 `;
             } else {
                 statusDiv.innerHTML = `<button onclick="openAuthModal()" class="px-3 py-1.5 bg-sky-600 text-white rounded-lg text-sm font-medium hover:bg-sky-700 transition">Přihlásit se</button>`;
             }
+            lucide.createIcons();
         }
 
         function logout() {
@@ -1494,7 +1703,7 @@
                 updateAuthUI(null);
                 window.currentUser = null;
                 loadUserPolls();
-            });
+            }).catch(err => console.error("Chyba při odhlašování:", err));
         }
     </script>
 </body>
