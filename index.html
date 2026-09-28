@@ -163,7 +163,26 @@
             </div>
 
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <!-- Editor otázek -->
+                <!-- Seznam otázek (Vlevo na desktopu, Nahoře na mobilu) -->
+                <div class="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 flex flex-col justify-between">
+                    <div>
+                        <h2 class="text-lg font-bold border-b border-slate-200 dark:border-slate-700 pb-2 mb-4">Otázky v této sadě</h2>
+                        <div id="questionsList" class="space-y-2 max-h-80 overflow-y-auto"></div>
+                        <div id="emptyState" class="hidden flex-col items-center justify-center p-6 text-center border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50/50 dark:bg-slate-800/30 my-4">
+                            <div class="w-12 h-12 bg-sky-100 dark:bg-sky-950/50 text-sky-600 dark:text-sky-400 rounded-full flex items-center justify-center mb-3">
+                                <i data-lucide="file-question" class="w-6 h-6"></i>
+                            </div>
+                            <h3 class="font-semibold text-slate-800 dark:text-slate-200 mb-1 text-sm">Zatím nemáte žádné otázky</h3>
+                        </div>
+                    </div>
+
+                    <button onclick="addNewQuestion()" class="mt-4 w-full py-2 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 font-medium rounded-lg transition flex items-center justify-center space-x-2">
+                        <i data-lucide="plus-circle" class="w-4 h-4"></i>
+                        <span>Nová otázka</span>
+                    </button>
+                </div>
+
+                <!-- Editor otázek (Vpravo na desktopu, Dole na mobilu) -->
                 <div class="lg:col-span-2 bg-white dark:bg-slate-800 p-6 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 space-y-4">
                     <h2 class="text-lg font-bold border-b border-slate-200 dark:border-slate-700 pb-2 flex justify-between items-center">
                         <span>Editor otázky</span>
@@ -223,25 +242,6 @@
                         </button>
                         <button onclick="deleteCurrentQuestion()" class="px-3 py-2 bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 hover:bg-red-200 rounded-lg text-sm transition">Smazat</button>
                     </div>
-                </div>
-
-                <!-- Seznam otázek -->
-                <div class="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 flex flex-col justify-between">
-                    <div>
-                        <h2 class="text-lg font-bold border-b border-slate-200 dark:border-slate-700 pb-2 mb-4">Otázky v této sadě</h2>
-                        <div id="questionsList" class="space-y-2 max-h-80 overflow-y-auto"></div>
-                        <div id="emptyState" class="hidden flex-col items-center justify-center p-6 text-center border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50/50 dark:bg-slate-800/30 my-4">
-                            <div class="w-12 h-12 bg-sky-100 dark:bg-sky-950/50 text-sky-600 dark:text-sky-400 rounded-full flex items-center justify-center mb-3">
-                                <i data-lucide="file-question" class="w-6 h-6"></i>
-                            </div>
-                            <h3 class="font-semibold text-slate-800 dark:text-slate-200 mb-1 text-sm">Zatím nemáte žádné otázky</h3>
-                        </div>
-                    </div>
-
-                    <button onclick="addNewQuestion()" class="mt-4 w-full py-2 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 font-medium rounded-lg transition flex items-center justify-center space-x-2">
-                        <i data-lucide="plus-circle" class="w-4 h-4"></i>
-                        <span>Nová otázka</span>
-                    </button>
                 </div>
             </div>
         </div>
