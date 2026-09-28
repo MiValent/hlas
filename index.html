@@ -388,7 +388,7 @@
         let currentPollId = null;
         let questions = [
             {
-                id: 1,
+                id: "q_1",
                 type: 'mc',
                 text: 'Jaká je vaše nejoblíbenější barva?',
                 options: ['Červená', 'Modrá', 'Zelená', 'Žlutá'],
@@ -405,6 +405,7 @@
         let paceMode = 'teacher'; 
         let currentStudentName = '';
         let lastRenderedQuestionId = null;
+        let activeStudentQuestion = null; // Uchovává aktuální spuštěnou otázku pro žáka
 
         lucide.createIcons();
 
@@ -619,7 +620,7 @@
             }
 
             questions[currentQuestionIndex] = {
-                id: questions[currentQuestionIndex]?.id || Date.now(),
+                id: questions[currentQuestionIndex]?.id || "q_" + Date.now(),
                 type: type,
                 text: text,
                 options: options
@@ -666,7 +667,7 @@
         function addNewQuestion() {
             saveQuestion();
             questions.push({
-                id: Date.now(),
+                id: "q_" + Date.now(),
                 type: 'mc',
                 text: '',
                 options: ['Možnost 1', 'Možnost 2']
@@ -992,14 +993,18 @@
 
         function updateStudentViewSelfPaced() {
             document.getElementById('studentQuestionIndexLabel').innerText = `${studentCurrentQuestionIndex + 1} z ${questions.length}`;
-            renderStudentQuestion(questions[studentCurrentQuestionIndex]);
+            activeStudentQuestion = questions[studentCurrentQuestionIndex];
+            renderStudentQuestion(activeStudentQuestion);
         }
 
         async function submitAnswer() {
             let val = null;
-            const q = (paceMode === 'student') ? questions[studentCurrentQuestionIndex] : questions[currentQuestionIndex];
+            const q = (paceMode === 'student') ? questions[studentCurrentQuestionIndex] : activeStudentQuestion;
 
-            if (!q) return;
+            if (!q) {
+                alert("Není aktivní žádná otázka k odpovězení.");
+                return;
+            }
 
             if (q.type === 'mc' || q.type === 'rating') {
                 const checked = document.querySelector('input[name="studentAnswer"]:checked');
@@ -1009,7 +1014,10 @@
                 if (inp) val = inp.value.trim();
             }
 
-            if (!val) return alert('Vyberte nebo napište odpověď.');
+            if (!val) {
+                alert('Vyberte nebo napište odpověď.');
+                return;
+            }
 
             if (window.db) {
                 const { doc, setDoc, arrayUnion } = window.fbModules;
@@ -1080,6 +1088,7 @@
                         updateStudentViewSelfPaced();
                     } else {
                         nav.classList.add('hidden');
+                        activeStudentQuestion = data.currentQuestion;
                         renderStudentQuestion(data.currentQuestion);
                     }
                 }
