@@ -177,6 +177,18 @@
                         <input type="text" id="questionText" placeholder="Napište otázku..." class="w-full p-2.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-sky-500">
                     </div>
 
+                    <!-- POČET POVOLENÝCH ODPOVĚDÍ (Cloud & Open) -->
+                    <div id="maxResponsesArea" class="hidden">
+                        <label class="block text-sm font-medium mb-1">Kolik odpovědí může účastník poslat?</label>
+                        <select id="maxResponsesSelect" class="w-full p-2.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-sky-500">
+                            <option value="1">Pouze 1 odpověď</option>
+                            <option value="2">Maximálně 2 odpovědi</option>
+                            <option value="3">Maximálně 3 odpovědi</option>
+                            <option value="5">Maximálně 5 odpovědí</option>
+                            <option value="unlimited">Neomezeně odpovědí</option>
+                        </select>
+                    </div>
+
                     <!-- PŘIDÁNÍ OBRÁZKU -->
                     <div class="p-3 bg-slate-50 dark:bg-slate-700/50 rounded-lg border border-slate-200 dark:border-slate-600 space-y-2">
                         <label class="block text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase">Obrázek k otázce (Volitelné)</label>
@@ -275,7 +287,7 @@
                     
                     <div id="studentSubmittedMessage" class="hidden p-4 bg-emerald-50 dark:bg-emerald-900/30 border border-emerald-200 dark:border-emerald-800 rounded-xl text-center space-y-1">
                         <p class="font-bold text-emerald-700 dark:text-emerald-300">Odpověď byla odeslána!</p>
-                        <p class="text-xs text-emerald-600 dark:text-emerald-400">Počkejte na další zadání od učitele.</p>
+                        <p id="studentResponseCountText" class="text-xs text-emerald-600 dark:text-emerald-400">Počkejte na další zadání od učitele.</p>
                     </div>
                 </div>
             </div>
@@ -418,6 +430,7 @@
                 type: 'mc',
                 text: 'Jaká je vaše nejoblíbenější barva?',
                 options: ['Červená', 'Modrá', 'Zelená', 'Žlutá'],
+                maxResponses: '1',
                 imageUrl: null
             }
         ];
@@ -660,10 +673,17 @@
         function changeQuestionType() {
             const type = document.getElementById('questionType').value;
             const mcArea = document.getElementById('mcOptionsArea');
+            const maxResponsesArea = document.getElementById('maxResponsesArea');
+
             if (type === 'mc') {
                 mcArea.classList.remove('hidden');
+                maxResponsesArea.classList.add('hidden');
+            } else if (type === 'cloud' || type === 'open') {
+                mcArea.classList.add('hidden');
+                maxResponsesArea.classList.remove('hidden');
             } else {
                 mcArea.classList.add('hidden');
+                maxResponsesArea.classList.add('hidden');
             }
         }
 
@@ -698,6 +718,7 @@
             if (currentQuestionIndex < 0) return;
             const type = document.getElementById('questionType').value;
             const text = document.getElementById('questionText').value;
+            const maxResponses = document.getElementById('maxResponsesSelect').value;
             let options = [];
 
             if (type === 'mc') {
@@ -710,6 +731,7 @@
                 type: type,
                 text: text,
                 options: options,
+                maxResponses: maxResponses || '1',
                 imageUrl: currentUploadedImageBase64
             };
 
@@ -724,6 +746,7 @@
             document.getElementById('questionCounter').innerText = `Otázka ${currentQuestionIndex + 1}`;
             document.getElementById('questionType').value = q.type;
             document.getElementById('questionText').value = q.text;
+            document.getElementById('maxResponsesSelect').value = q.maxResponses || '1';
             
             currentUploadedImageBase64 = q.imageUrl || null;
             showImagePreview(currentUploadedImageBase64);
@@ -765,6 +788,7 @@
                 type: 'mc',
                 text: '',
                 options: ['Možnost 1', 'Možnost 2'],
+                maxResponses: '1',
                 imageUrl: null
             });
             currentQuestionIndex = questions.length - 1;
@@ -795,7 +819,6 @@
             
             currentQuestionIndex = -1;
             
-            // Přímý odkaz pro QR kód včetně PINu
             const directJoinUrl = `${window.location.origin}${window.location.pathname}?pin=${currentSessionPin}`;
 
             document.getElementById('presPin').innerText = currentSessionPin;
@@ -890,7 +913,7 @@
             }
 
             introSlide.classList.add('hidden');
-            questionSlide.classList.remove('hidden');
+            questionSlide.remove('hidden');
 
             const q = questions[currentQuestionIndex];
             document.getElementById('presQuestionTitle').innerText = q ? `${currentQuestionIndex + 1}. ${q.text}` : '';
@@ -1021,6 +1044,7 @@
                     }
 
                     updatePresentationView();
+                    updateStudentResponseState();
                 }
             });
         }
@@ -1043,20 +1067,11 @@
         function renderStudentQuestion(q) {
             const activeCard = document.getElementById('studentActiveQuestion');
             const waitingCard = document.getElementById('studentWaiting');
-            const submitBtn = document.getElementById('submitAnswerBtn');
-            const submittedMsg = document.getElementById('studentSubmittedMessage');
 
             if (!q) {
                 waitingCard.classList.remove('hidden');
                 activeCard.classList.add('hidden');
                 return;
-            }
-
-            if (lastRenderedQuestionId !== q.id) {
-                lastRenderedQuestionId = q.id;
-                submitBtn.disabled = false;
-                submitBtn.classList.remove('hidden');
-                submittedMsg.classList.add('hidden');
             }
 
             waitingCard.classList.add('hidden');
@@ -1097,6 +1112,37 @@
                 `;
             } else {
                 area.innerHTML = `<input type="text" id="studentTextInput" placeholder="Napište vaši odpověď..." class="w-full p-3.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 focus:ring-2 focus:ring-sky-500 outline-none">`;
+            }
+
+            updateStudentResponseState();
+        }
+
+        function updateStudentResponseState() {
+            const q = (paceMode === 'student') ? questions[studentCurrentQuestionIndex] : activeStudentQuestion;
+            if (!q) return;
+
+            const myAnswers = sessionAnswers.filter(a => String(a.questionId) === String(q.id) && a.student === currentStudentName);
+            const count = myAnswers.length;
+            const max = q.maxResponses || '1';
+
+            const submitBtn = document.getElementById('submitAnswerBtn');
+            const submittedMsg = document.getElementById('studentSubmittedMessage');
+            const countText = document.getElementById('studentResponseCountText');
+
+            if (max !== 'unlimited' && count >= parseInt(max, 10)) {
+                submitBtn.classList.add('hidden');
+                submittedMsg.classList.remove('hidden');
+                countText.innerText = `Odesláno ${count} z ${max} odpovědí. Děkujeme!`;
+            } else {
+                submitBtn.classList.remove('hidden');
+                if (count > 0) {
+                    submittedMsg.classList.remove('hidden');
+                    countText.innerText = max === 'unlimited' 
+                        ? `Odesláno ${count} odpovědí. Můžete poslat další!` 
+                        : `Odesláno ${count} z ${max} odpovědí. Můžete poslat ještě další.`;
+                } else {
+                    submittedMsg.classList.add('hidden');
+                }
             }
         }
 
@@ -1157,8 +1203,9 @@
                         })
                     }, { merge: true });
 
-                    document.getElementById('submitAnswerBtn').classList.add('hidden');
-                    document.getElementById('studentSubmittedMessage').classList.remove('hidden');
+                    const inp = document.getElementById('studentTextInput');
+                    if (inp) inp.value = '';
+
                 } catch (e) {
                     console.error("Chyba při odesílání odpovědi:", e);
                     alert("Chyba při odesílání odpovědi.");
@@ -1198,6 +1245,7 @@
                 if (docSnap.exists()) {
                     const data = docSnap.data();
                     
+                    sessionAnswers = data.answers || [];
                     if (data.allQuestions) questions = data.allQuestions;
                     paceMode = data.paceMode || 'teacher';
 
