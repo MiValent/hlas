@@ -74,13 +74,11 @@
             </div>
             
             <div class="flex items-center space-x-3">
-                <!-- Tlačítko Nápovědy -->
                 <button onclick="toggleHelpModal(true)" class="px-3 py-1.5 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 rounded-lg text-xs font-semibold transition flex items-center space-x-1.5">
                     <i data-lucide="help-circle" class="w-4 h-4 text-sky-500"></i>
                     <span>Jak to funguje?</span>
                 </button>
 
-                <!-- Tlačítko pro přebliknutí na žáka -->
                 <button onclick="showStudentView()" class="px-3 py-1.5 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 rounded-lg text-xs font-semibold transition border border-emerald-200 dark:border-emerald-800 flex items-center space-x-1">
                     <i data-lucide="users" class="w-4 h-4"></i>
                     <span>Vstoupit jako žák</span>
@@ -107,7 +105,6 @@
                         <span>Kabinet Učitele:</span>
                         <input type="text" id="pollTitleInput" value="Moje nové hlasování" class="bg-transparent border-b border-dashed border-slate-400 focus:border-sky-500 outline-none px-1 font-semibold text-sky-600 dark:text-sky-400">
                     </h1>
-                    <!-- Mikro-úvod přímo pod názvem -->
                     <p class="text-xs text-slate-500 dark:text-slate-400 mt-1 flex items-center gap-1.5">
                         <i data-lucide="sparkles" class="w-3.5 h-3.5 text-sky-500 shrink-0"></i>
                         <span>Připravte otázky, uložte sadu nebo rovnou spusťte živou prezentaci. PIN: <strong id="teacherPin" class="font-mono text-sky-600 dark:text-sky-400">---</strong></span>
@@ -173,7 +170,6 @@
                         <input type="text" id="questionText" placeholder="Napište otázku..." class="w-full p-2.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-sky-500">
                     </div>
 
-                    <!-- POČET POVOLENÝCH ODPOVĚDÍ (Cloud & Open) -->
                     <div id="maxResponsesArea" class="hidden">
                         <label class="block text-sm font-medium mb-1">Kolik odpovědí může účastník poslat?</label>
                         <select id="maxResponsesSelect" class="w-full p-2.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-sky-500">
@@ -185,7 +181,6 @@
                         </select>
                     </div>
 
-                    <!-- PŘIDÁNÍ OBRÁZKU -->
                     <div class="p-3 bg-slate-50 dark:bg-slate-700/50 rounded-lg border border-slate-200 dark:border-slate-600 space-y-2">
                         <label class="block text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase">Obrázek k otázce (Volitelné)</label>
                         <div class="flex flex-col sm:flex-row items-center gap-3">
@@ -197,7 +192,6 @@
                         </div>
                     </div>
 
-                    <!-- Možnosti MC -->
                     <div id="mcOptionsArea" class="space-y-3">
                         <label class="block text-sm font-medium">Možnosti odpovědí</label>
                         <div id="optionsList" class="space-y-2"></div>
@@ -220,11 +214,8 @@
                 <div class="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 flex flex-col justify-between">
                     <div>
                         <h2 class="text-lg font-bold border-b border-slate-200 dark:border-slate-700 pb-2 mb-4">Otázky v této sadě</h2>
-                        
-                        <!-- Seznam otázek -->
                         <div id="questionsList" class="space-y-2 max-h-80 overflow-y-auto"></div>
 
-                        <!-- Prázdný stav (Empty State) -->
                         <div id="emptyState" class="hidden flex-col items-center justify-center p-6 text-center border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50/50 dark:bg-slate-800/30 my-4">
                             <div class="w-12 h-12 bg-sky-100 dark:bg-sky-950/50 text-sky-600 dark:text-sky-400 rounded-full flex items-center justify-center mb-3">
                                 <i data-lucide="file-question" class="w-6 h-6"></i>
@@ -233,20 +224,6 @@
                             <p class="text-xs text-slate-500 dark:text-slate-400 mb-4">
                                 Vyberte typ otázky v editoru vlevo a vytvořte svou první otázku pro hlasování.
                             </p>
-                            <div class="flex flex-col gap-1.5 text-xs text-slate-600 dark:text-slate-300 text-left">
-                                <div class="flex items-center gap-2">
-                                    <span class="w-4 h-4 rounded-full bg-sky-100 dark:bg-sky-900 text-sky-700 dark:text-sky-300 font-bold flex items-center justify-center text-[10px]">1</span>
-                                    <span>Napište znění v editoru</span>
-                                </div>
-                                <div class="flex items-center gap-2">
-                                    <span class="w-4 h-4 rounded-full bg-sky-100 dark:bg-sky-900 text-sky-700 dark:text-sky-300 font-bold flex items-center justify-center text-[10px]">2</span>
-                                    <span>Klikněte na „Uložit otázku“</span>
-                                </div>
-                                <div class="flex items-center gap-2">
-                                    <span class="w-4 h-4 rounded-full bg-sky-100 dark:bg-sky-900 text-sky-700 dark:text-sky-300 font-bold flex items-center justify-center text-[10px]">3</span>
-                                    <span>Spusťte živou prezentaci</span>
-                                </div>
-                            </div>
                         </div>
                     </div>
 
@@ -274,7 +251,6 @@
                 <button onclick="showTeacherView()" class="w-full py-2 text-sm text-slate-500 hover:underline text-center block">Zpět do kabinetu</button>
             </div>
 
-            <!-- Rozhraní hlasování žáka -->
             <div id="studentPollCard" class="hidden bg-white dark:bg-slate-800 p-6 rounded-xl shadow-md border border-slate-200 dark:border-slate-700 space-y-6">
                 <div class="flex justify-between items-center text-xs text-slate-500 border-b border-slate-200 dark:border-slate-700 pb-2">
                     <span id="studentStatus" class="font-medium text-emerald-600 dark:text-emerald-400">Připojeno</span>
@@ -287,7 +263,6 @@
                     <p class="text-sm text-slate-500">Otázka se zobrazí hned, jakmile ji učitel spustí.</p>
                 </div>
 
-                <!-- Navigace v režimu vlastního tempa -->
                 <div id="studentSelfPacedNav" class="hidden flex justify-between items-center border-b border-slate-200 dark:border-slate-700 pb-3">
                     <button onclick="studentPrevQuestion()" class="px-3 py-1 bg-slate-100 dark:bg-slate-700 text-xs rounded hover:bg-slate-200 flex items-center space-x-1">
                         <i data-lucide="chevron-left" class="w-3.5 h-3.5"></i><span>Předchozí</span>
@@ -343,6 +318,12 @@
                         <span id="hideText">Odkrýt výsledky</span>
                     </button>
 
+                    <!-- NOVÉ TLAČÍTKO PRO EXPORT VÝSLEDKŮ -->
+                    <button onclick="exportResultsToCSV()" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-semibold flex items-center space-x-1 transition shadow" title="Stáhnout výsledky v CSV">
+                        <i data-lucide="download" class="w-4 h-4"></i>
+                        <span>Export (CSV)</span>
+                    </button>
+
                     <div class="flex space-x-1 pl-2 border-l border-slate-200 dark:border-slate-700">
                         <button onclick="prevPresQuestion()" class="p-2 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 rounded-lg"><i data-lucide="chevron-left" class="w-5 h-5"></i></button>
                         <button onclick="nextPresQuestion()" class="p-2 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 rounded-lg"><i data-lucide="chevron-right" class="w-5 h-5"></i></button>
@@ -355,7 +336,6 @@
             <!-- Hlavní Plátno -->
             <div class="bg-white dark:bg-slate-800 p-8 rounded-xl shadow-lg border border-slate-200 dark:border-slate-700 min-h-[420px] flex flex-col justify-between relative overflow-hidden">
                 
-                <!-- Úvodní spojovací obrazovka -->
                 <div id="introSlide" class="flex flex-col items-center justify-center text-center py-6 space-y-6 my-auto">
                     <h1 class="text-3xl md:text-4xl font-extrabold text-slate-800 dark:text-white">Připojte se k hlasování</h1>
                     
@@ -383,7 +363,6 @@
                     </button>
                 </div>
 
-                <!-- Snímek otázky -->
                 <div id="questionSlide" class="hidden flex-grow flex flex-col justify-between">
                     <h1 id="presQuestionTitle" class="text-2xl md:text-3xl font-bold text-center mb-4"></h1>
                     
@@ -896,6 +875,45 @@
             paceMode = document.getElementById('paceModePrepSelect').value;
         }
 
+        // --- EXPORT VÝSLEDKŮ DO CSV ---
+        function exportResultsToCSV() {
+            if (!sessionAnswers || sessionAnswers.length === 0) {
+                alert("Zatím nebyly zaznamenány žádné odpovědi k exportu.");
+                return;
+            }
+
+            // Mapování otázek podle ID pro rychlé vyhledávání znění
+            const questionsMap = {};
+            questions.forEach(q => {
+                questionsMap[q.id] = q;
+            });
+
+            // Příprava hlavičky CSV (BOM pro správné kódování češtiny v Excelu)
+            let csvContent = "\uFEFF";
+            csvContent += "Jméno žáka;Otázka;Typ otázky;Odpověď;Čas odeslání\n";
+
+            sessionAnswers.forEach(ans => {
+                const q = questionsMap[ans.questionId] || { text: "Neznámá otázka", type: "Neznámý" };
+                const studentName = (ans.student || "Anonym").replace(/;/g, ",");
+                const questionText = (q.text || "").replace(/;/g, ",").replace(/\n/g, " ");
+                const answerText = String(ans.answer || "").replace(/;/g, ",").replace(/\n/g, " ");
+                const dateStr = ans.timestamp ? new Date(ans.timestamp).toLocaleString("cs-CZ") : "";
+
+                csvContent += `"${studentName}";"${questionText}";"${q.type}";"${answerText}";"${dateStr}"\n`;
+            });
+
+            // Stažení souboru
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement("a");
+            link.setAttribute("href", url);
+            const title = document.getElementById('pollTitleInput').value.trim() || 'vysledky';
+            link.setAttribute("download", `Vysledky_${title.replace(/\s+/g, '_')}_PIN_${currentSessionPin}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
         // --- PREZENTACE & PREZENTAČNÍ OBSLUHA ---
         async function startPresentation() {
             if (questions.length === 0) {
@@ -1357,7 +1375,6 @@
             });
         }
 
-        // AUTOMATICKÉ ČTENÍ PARMETRŮ Z URL (& OTEVŘENÍ POHLEDU ŽÁKA)
         window.addEventListener('DOMContentLoaded', () => {
             document.getElementById('teacherPin').innerText = currentSessionPin;
             renderQuestionsList();
