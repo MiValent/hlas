@@ -44,11 +44,11 @@
                     <div id="userInfo" class="hidden flex items-center space-x-3">
                         <img id="userAvatar" class="w-8 h-8 rounded-full border border-sky-500" src="" alt="Avatar">
                         <span id="userName" class="text-sm font-semibold hidden sm:inline"></span>
-                        <button id="logoutBtn" class="text-xs bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 px-3 py-1.5 rounded-lg transition">
+                        <button onclick="window.handleSignOut()" class="text-xs bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 px-3 py-1.5 rounded-lg transition">
                             Odhlásit
                         </button>
                     </div>
-                    <button id="loginBtn" class="bg-sky-600 hover:bg-sky-700 text-white text-sm px-4 py-2 rounded-xl font-medium shadow-sm transition">
+                    <button id="loginBtn" onclick="window.handleSignIn()" class="bg-sky-600 hover:bg-sky-700 text-white text-sm px-4 py-2 rounded-xl font-medium shadow-sm transition">
                         Přihlásit přes Google
                     </button>
                 </div>
@@ -66,7 +66,7 @@
                     <h1 class="text-2xl font-bold">Moje hlasování a sady</h1>
                     <p class="text-sm text-slate-500 dark:text-slate-400">Vytvářejte otázky, spouštějte prezentace a vyhodnocujte výsledky.</p>
                 </div>
-                <button id="openCreateBtn" class="w-full sm:w-auto bg-sky-600 hover:bg-sky-700 text-white font-semibold px-5 py-2.5 rounded-xl shadow transition flex items-center justify-center space-x-2">
+                <button onclick="window.openCreateModal()" class="w-full sm:w-auto bg-sky-600 hover:bg-sky-700 text-white font-semibold px-5 py-2.5 rounded-xl shadow transition flex items-center justify-center space-x-2">
                     <span>+ Nová sada otázek</span>
                 </button>
             </div>
@@ -83,7 +83,7 @@
                 <h2 class="text-xl font-bold">Připojit se k hlasování</h2>
                 <input type="text" id="joinPinInput" placeholder="Zadejte PIN místnosti" class="w-full text-center text-2xl font-mono tracking-widest p-3 border rounded-xl dark:bg-slate-700 dark:border-slate-600 focus:ring-2 focus:ring-sky-500 outline-none uppercase">
                 <input type="text" id="joinNameInput" placeholder="Vaše jméno nebo přezdívka" class="w-full text-center p-3 border rounded-xl dark:bg-slate-700 dark:border-slate-600 focus:ring-2 focus:ring-sky-500 outline-none">
-                <button id="joinRoomBtn" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 rounded-xl shadow transition">
+                <button onclick="window.joinRoom()" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 rounded-xl shadow transition">
                     Vstoupit do místnosti
                 </button>
             </div>
@@ -93,7 +93,7 @@
                 <div class="text-xs font-bold uppercase tracking-wider text-sky-600 dark:text-sky-400" id="studentQCategory">Otázka</div>
                 <h3 id="studentQText" class="text-lg font-bold">...</h3>
                 <div id="studentInputArea" class="space-y-3"></div>
-                <button id="submitAnswerBtn" class="w-full bg-sky-600 hover:bg-sky-700 text-white font-bold py-3 rounded-xl transition">Odeslat odpověď</button>
+                <button id="submitAnswerBtn" onclick="window.sendAnswer()" class="w-full bg-sky-600 hover:bg-sky-700 text-white font-bold py-3 rounded-xl transition">Odeslat odpověď</button>
             </div>
         </section>
 
@@ -109,7 +109,7 @@
                         <span class="text-xs text-slate-400 block">PIN KÓD</span>
                         <span id="presPin" class="text-2xl font-mono font-bold text-emerald-400">000000</span>
                     </div>
-                    <button id="closePresBtn" class="bg-rose-600 hover:bg-rose-700 text-white font-semibold px-4 py-2 rounded-xl transition text-sm">
+                    <button onclick="window.closePresentation()" class="bg-rose-600 hover:bg-rose-700 text-white font-semibold px-4 py-2 rounded-xl transition text-sm">
                         Ukončit prezentaci
                     </button>
                 </div>
@@ -127,8 +127,8 @@
                 </div>
 
                 <div class="flex justify-between items-center pt-4">
-                    <button id="prevQBtn" class="bg-slate-800 hover:bg-slate-700 px-5 py-2.5 rounded-xl text-sm font-semibold transition">← Předchozí</button>
-                    <button id="nextQBtn" class="bg-sky-600 hover:bg-sky-500 px-5 py-2.5 rounded-xl text-sm font-semibold transition">Další →</button>
+                    <button onclick="window.prevQuestion()" class="bg-slate-800 hover:bg-slate-700 px-5 py-2.5 rounded-xl text-sm font-semibold transition">← Předchozí</button>
+                    <button onclick="window.nextQuestion()" class="bg-sky-600 hover:bg-sky-500 px-5 py-2.5 rounded-xl text-sm font-semibold transition">Další →</button>
                 </div>
             </div>
         </section>
@@ -140,7 +140,7 @@
         <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl max-w-2xl w-full p-6 space-y-6 border border-slate-200 dark:border-slate-700">
             <div class="flex justify-between items-center border-b border-slate-200 dark:border-slate-700 pb-3">
                 <h3 class="text-xl font-bold">Vytvořit novou sadu otázek</h3>
-                <button id="closeCreateCrossBtn" class="text-slate-400 hover:text-slate-600 text-xl font-bold">&times;</button>
+                <button onclick="window.closeCreateModal()" class="text-slate-400 hover:text-slate-600 text-xl font-bold">&times;</button>
             </div>
             
             <div class="space-y-4">
@@ -154,15 +154,15 @@
                     <div id="questionsContainer" class="space-y-4 max-h-80 overflow-y-auto pr-2">
                         <!-- Otázky se generují sem -->
                     </div>
-                    <button id="addQBtn" class="w-full border-2 border-dashed border-slate-300 dark:border-slate-600 py-2.5 rounded-xl text-sm font-bold text-sky-600 dark:text-sky-400 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition">
+                    <button onclick="window.addQuestionField()" class="w-full border-2 border-dashed border-slate-300 dark:border-slate-600 py-2.5 rounded-xl text-sm font-bold text-sky-600 dark:text-sky-400 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition">
                         + Přidat další otázku
                     </button>
                 </div>
             </div>
 
             <div class="flex justify-end space-x-3 border-t border-slate-200 dark:border-slate-700 pt-4">
-                <button id="closeCreateCancelBtn" class="px-4 py-2 rounded-xl text-sm font-semibold bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 transition">Zrušit</button>
-                <button id="savePollBtn" class="px-5 py-2 bg-sky-600 hover:bg-sky-700 text-white rounded-xl text-sm font-bold transition">Uložit sadu</button>
+                <button onclick="window.closeCreateModal()" class="px-4 py-2 rounded-xl text-sm font-semibold bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 transition">Zrušit</button>
+                <button onclick="window.savePoll()" class="px-5 py-2 bg-sky-600 hover:bg-sky-700 text-white rounded-xl text-sm font-bold transition">Uložit sadu</button>
             </div>
         </div>
     </div>
@@ -176,10 +176,10 @@
                     <p class="text-xs text-slate-500">Souhrnný přehled a grafy odpovědí</p>
                 </div>
                 <div class="flex items-center space-x-2">
-                    <button id="exportPdfBtn" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3 py-2 rounded-lg flex items-center space-x-1 shadow transition">
+                    <button onclick="window.exportModalToPDF()" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3 py-2 rounded-lg flex items-center space-x-1 shadow transition">
                         <span>📄 Stáhnout PDF</span>
                     </button>
-                    <button id="closeResultsCrossBtn" class="text-slate-400 hover:text-slate-600 text-xl font-bold px-2">&times;</button>
+                    <button onclick="window.closeResultsModal()" class="text-slate-400 hover:text-slate-600 text-xl font-bold px-2">&times;</button>
                 </div>
             </div>
 
@@ -196,7 +196,7 @@
         import { getAuth, signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
         import { getFirestore, collection, addDoc, doc, updateDoc, deleteDoc, onSnapshot, query, where } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-        // Konfigurace Firebase
+        // Konfigurace Firebase (Nahraďte vlastní konfigurací dle potřeby)
         const firebaseConfig = {
             apiKey: "AIzaSyDemoConfigOnly_ReplaceWithYours",
             authDomain: "demo-app.firebaseapp.com",
@@ -210,7 +210,7 @@
         const auth = getAuth(app);
         const db = getFirestore(app);
 
-        // Globální stav
+        // Globální stav aplikace
         window.currentUser = null;
         let activePolls = [];
         let currentPoll = null;
@@ -220,58 +220,7 @@
         let activeCharts = [];
         let liveChartInstance = null;
 
-        // BINDING EVENT LISTENERS & PROPOJENÍ S WINDOW
-        document.getElementById('loginBtn').addEventListener('click', () => {
-            const provider = new GoogleAuthProvider();
-            signInWithPopup(auth, provider).catch(err => console.error("Chyba přihlášení:", err));
-        });
-
-        document.getElementById('logoutBtn').addEventListener('click', () => signOut(auth));
-        document.getElementById('openCreateBtn').addEventListener('click', openCreateModal);
-        document.getElementById('closeCreateCrossBtn').addEventListener('click', closeCreateModal);
-        document.getElementById('closeCreateCancelBtn').addEventListener('click', closeCreateModal);
-        document.getElementById('addQBtn').addEventListener('click', addQuestionField);
-        document.getElementById('savePollBtn').addEventListener('click', savePoll);
-        document.getElementById('closePresBtn').addEventListener('click', closePresentation);
-        document.getElementById('prevQBtn').addEventListener('click', prevQuestion);
-        document.getElementById('nextQBtn').addEventListener('click', nextQuestion);
-        document.getElementById('closeResultsCrossBtn').addEventListener('click', closeResultsModal);
-        document.getElementById('exportPdfBtn').addEventListener('click', exportModalToPDF);
-
-        // Zpřístupnění dynamických funkcí pro tlačítka v generovaných kartách
-        window.startPresentation = (pollId) => {
-            currentPoll = activePolls.find(p => p.id === pollId);
-            if (!currentPoll) return;
-            currentPollId = pollId;
-            currentQuestionIndex = 0;
-            sessionAnswers = [];
-
-            document.getElementById('presTitle').innerText = currentPoll.title;
-            document.getElementById('presPin').innerText = Math.floor(100000 + Math.random() * 900000);
-            
-            document.getElementById('teacherView').classList.add('hidden');
-            document.getElementById('presentationView').classList.remove('hidden');
-
-            renderCurrentPresQuestion();
-        };
-
-        window.viewResults = (pollId) => {
-            const poll = activePolls.find(p => p.id === pollId);
-            if (!poll) return;
-            openResultsModal(poll.title, poll.questions, poll.savedAnswers || []);
-        };
-
-        window.deletePoll = async (pollId) => {
-            if (confirm("Opravdu chcete tuto sadu smazat?")) {
-                try {
-                    await deleteDoc(doc(db, "polls", pollId));
-                } catch (e) {
-                    console.error("Chyba při mazání:", e);
-                }
-            }
-        };
-
-        // STAV AUTENTIZACE
+        // AUTHENTIZACE EXPOZICE PRO WINDOW
         onAuthStateChanged(auth, (user) => {
             window.currentUser = user;
             const loginBtn = document.getElementById('loginBtn');
@@ -294,7 +243,16 @@
             }
         });
 
-        // REÁLNÁ DATA POLLŮ
+        window.handleSignIn = () => {
+            const provider = new GoogleAuthProvider();
+            signInWithPopup(auth, provider).catch(err => console.error("Chyba přihlášení:", err));
+        };
+
+        window.handleSignOut = () => {
+            signOut(auth);
+        };
+
+        // NAČÍTÁNÍ POLLŮ
         function loadUserPolls() {
             if (!window.currentUser) return;
             const q = query(collection(db, "polls"), where("userId", "==", window.currentUser.uid));
@@ -328,7 +286,7 @@
                                 ${poll.questions ? poll.questions.length : 0} otázek
                             </span>
                         </div>
-                        <p class="text-xs text-slate-500">Unikátní respondenti: <strong class="text-sky-600 dark:text-sky-400">${totalRespondents}</strong></p>
+                        <p class="text-xs text-slate-500">Respondenti: <strong class="text-sky-600 dark:text-sky-400">${totalRespondents}</strong></p>
                     </div>
 
                     <div class="grid grid-cols-2 gap-2 pt-2 border-t border-slate-100 dark:border-slate-700/50">
@@ -353,7 +311,23 @@
             return unique.size;
         }
 
-        // PREZENTACE (ODSTRANĚNO POČÍTADLO ODPOVĚDÍ)
+        // PREZENTACE
+        window.startPresentation = (pollId) => {
+            currentPoll = activePolls.find(p => p.id === pollId);
+            if (!currentPoll) return;
+            currentPollId = pollId;
+            currentQuestionIndex = 0;
+            sessionAnswers = [];
+
+            document.getElementById('presTitle').innerText = currentPoll.title;
+            document.getElementById('presPin').innerText = Math.floor(100000 + Math.random() * 900000);
+            
+            document.getElementById('teacherView').classList.add('hidden');
+            document.getElementById('presentationView').classList.remove('hidden');
+
+            renderCurrentPresQuestion();
+        };
+
         function renderCurrentPresQuestion() {
             const q = currentPoll.questions[currentQuestionIndex];
             document.getElementById('presQIndex').innerText = `Otázka ${currentQuestionIndex + 1} z ${currentPoll.questions.length}`;
@@ -390,21 +364,21 @@
             });
         }
 
-        function nextQuestion() {
+        window.nextQuestion = () => {
             if (currentQuestionIndex < currentPoll.questions.length - 1) {
                 currentQuestionIndex++;
                 renderCurrentPresQuestion();
             }
-        }
+        };
 
-        function prevQuestion() {
+        window.prevQuestion = () => {
             if (currentQuestionIndex > 0) {
                 currentQuestionIndex--;
                 renderCurrentPresQuestion();
             }
-        }
+        };
 
-        async function closePresentation() {
+        window.closePresentation = async () => {
             document.getElementById('presentationView').classList.add('hidden');
             document.getElementById('teacherView').classList.remove('hidden');
 
@@ -423,9 +397,15 @@
                 }
             }
             currentQuestionIndex = 0;
-        }
+        };
 
         // VÝSLEDKY & MODAL
+        window.viewResults = (pollId) => {
+            const poll = activePolls.find(p => p.id === pollId);
+            if (!poll) return;
+            openResultsModal(poll.title, poll.questions, poll.savedAnswers || []);
+        };
+
         function openResultsModal(title, pollQuestions, savedAnswers) {
             const modal = document.getElementById('resultsModal');
             const titleEl = document.getElementById('modalResultsTitle');
@@ -528,11 +508,11 @@
             });
         }
 
-        function closeResultsModal() {
+        window.closeResultsModal = () => {
             document.getElementById('resultsModal').classList.add('hidden');
-        }
+        };
 
-        function exportModalToPDF() {
+        window.exportModalToPDF = () => {
             const element = document.getElementById('modalResultsContent');
             const opt = {
                 margin:       0.5,
@@ -542,21 +522,21 @@
                 jsPDF:        { unit: 'in', format: 'letter', orientation: 'portrait' }
             };
             html2pdf().set(opt).from(element).save();
-        }
+        };
 
-        // VYTVÁŘENÍ SAK
-        function openCreateModal() {
+        // VYTVOŘENÍ SADY OTÁZEK
+        window.openCreateModal = () => {
             document.getElementById('questionsContainer').innerHTML = '';
             document.getElementById('pollTitleInput').value = '';
-            addQuestionField();
+            window.addQuestionField();
             document.getElementById('createModal').classList.remove('hidden');
-        }
+        };
 
-        function closeCreateModal() {
+        window.closeCreateModal = () => {
             document.getElementById('createModal').classList.add('hidden');
-        }
+        };
 
-        function addQuestionField() {
+        window.addQuestionField = () => {
             const container = document.getElementById('questionsContainer');
             const qIndex = container.children.length;
             const qDiv = document.createElement('div');
@@ -564,7 +544,7 @@
             qDiv.innerHTML = `
                 <div class="flex justify-between items-center">
                     <span class="text-xs font-bold text-slate-500">Otázka ${qIndex + 1}</span>
-                    <button type="button" class="remove-q-btn text-rose-500 text-xs font-bold">Odstranit</button>
+                    <button onclick="this.parentElement.parentElement.remove()" class="text-rose-500 text-xs font-bold">Odstranit</button>
                 </div>
                 <input type="text" class="q-text w-full p-2 border rounded-lg dark:bg-slate-700 dark:border-slate-600 text-sm" placeholder="Text otázky...">
                 <select class="q-type w-full p-2 border rounded-lg dark:bg-slate-700 dark:border-slate-600 text-sm">
@@ -575,12 +555,10 @@
                 </select>
                 <input type="text" class="q-options w-full p-2 border rounded-lg dark:bg-slate-700 dark:border-slate-600 text-xs" placeholder="Možnosti oddělené čárkou (pouze pro výběr)">
             `;
-
-            qDiv.querySelector('.remove-q-btn').addEventListener('click', () => qDiv.remove());
             container.appendChild(qDiv);
-        }
+        };
 
-        async function savePoll() {
+        window.savePoll = async () => {
             const title = document.getElementById('pollTitleInput').value.trim();
             if (!title) return alert("Zadejte prosím název sady.");
 
@@ -613,11 +591,25 @@
                     savedAnswers: [],
                     createdAt: Date.now()
                 });
-                closeCreateModal();
+                window.closeCreateModal();
             } catch (e) {
                 console.error("Chyba při ukládání sady:", e);
             }
-        }
+        };
+
+        window.deletePoll = async (pollId) => {
+            if (confirm("Opravdu chcete tuto sadu smazat?")) {
+                try {
+                    await deleteDoc(doc(db, "polls", pollId));
+                } catch (e) {
+                    console.error("Chyba při mazání:", e);
+                }
+            }
+        };
+
+        // Pomocné prázdné funkce pro žákovský pohled, aby onclick atributy neházely chybu
+        window.joinRoom = () => {};
+        window.sendAnswer = () => {};
     </script>
 </body>
 </html>
