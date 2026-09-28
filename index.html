@@ -22,8 +22,6 @@
     <script src="https://unpkg.com/lucide@latest"></script>
     <!-- QRCodeJS Library -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-    <!-- html2pdf Library pro export do PDF -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <!-- Firebase SDK -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
@@ -70,12 +68,24 @@
     <!-- Horní lišta -->
     <header class="bg-white dark:bg-slate-800 shadow-sm border-b border-slate-200 dark:border-slate-700 p-4 sticky top-0 z-50">
         <div class="max-w-6xl mx-auto flex justify-between items-center">
-            <div class="flex items-center space-x-3 cursor-pointer" onclick="showRoleSelector()">
+            <div class="flex items-center space-x-3 cursor-pointer" onclick="showTeacherView()">
                 <i data-lucide="bar-chart-2" class="w-8 h-8 text-sky-600"></i>
                 <span class="font-bold text-xl tracking-tight text-slate-900 dark:text-white">Hlasuj<span class="text-sky-600">.to</span></span>
             </div>
             
             <div class="flex items-center space-x-3">
+                <!-- Tlačítko Nápovědy -->
+                <button onclick="toggleHelpModal(true)" class="px-3 py-1.5 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 rounded-lg text-xs font-semibold transition flex items-center space-x-1.5">
+                    <i data-lucide="help-circle" class="w-4 h-4 text-sky-500"></i>
+                    <span>Jak to funguje?</span>
+                </button>
+
+                <!-- Tlačítko pro přebliknutí na žáka -->
+                <button onclick="showStudentView()" class="px-3 py-1.5 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 rounded-lg text-xs font-semibold transition border border-emerald-200 dark:border-emerald-800 flex items-center space-x-1">
+                    <i data-lucide="users" class="w-4 h-4"></i>
+                    <span>Vstoupit jako žák</span>
+                </button>
+
                 <button id="themeToggle" onclick="toggleDarkMode()" class="p-2 rounded-lg bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600 transition">
                     <i data-lucide="moon" id="themeIcon" class="w-5 h-5"></i>
                 </button>
@@ -88,35 +98,20 @@
 
     <!-- Hlavní kontejner -->
     <main class="flex-grow max-w-6xl w-full mx-auto p-4 md:p-6">
-        
-        <!-- Výběr role -->
-        <div id="roleSelector" class="grid grid-cols-1 md:grid-cols-2 gap-6 my-12">
-            <div onclick="selectRole('teacher')" class="bg-white dark:bg-slate-800 p-8 rounded-2xl shadow-md border border-slate-200 dark:border-slate-700 hover:border-sky-500 dark:hover:border-sky-500 cursor-pointer transition transform hover:-translate-y-1 flex flex-col items-center text-center group">
-                <div class="w-16 h-16 bg-sky-100 dark:bg-sky-900/50 rounded-full flex items-center justify-center text-sky-600 dark:text-sky-400 mb-4 group-hover:scale-110 transition">
-                    <i data-lucide="presentation" class="w-8 h-8"></i>
-                </div>
-                <h2 class="text-2xl font-bold mb-2">Učitel / Prezentující</h2>
-                <p class="text-slate-500 dark:text-slate-400">Vytvářejte sady otázek, spravujte kabinet, ukládejte hlasování a spouštějte živé prezentace.</p>
-            </div>
-
-            <div onclick="selectRole('student')" class="bg-white dark:bg-slate-800 p-8 rounded-2xl shadow-md border border-slate-200 dark:border-slate-700 hover:border-emerald-500 dark:hover:border-emerald-500 cursor-pointer transition transform hover:-translate-y-1 flex flex-col items-center text-center group">
-                <div class="w-16 h-16 bg-emerald-100 dark:bg-emerald-900/50 rounded-full flex items-center justify-center text-emerald-600 dark:text-emerald-400 mb-4 group-hover:scale-110 transition">
-                    <i data-lucide="users" class="w-8 h-8"></i>
-                </div>
-                <h2 class="text-2xl font-bold mb-2">Žák / Účastník</h2>
-                <p class="text-slate-500 dark:text-slate-400">Připojte se k hlasování zadáním PIN kódu zadaného učitelem.</p>
-            </div>
-        </div>
 
         <!-- POHLED UČITELE -->
-        <div id="teacherView" class="hidden space-y-6">
+        <div id="teacherView" class="space-y-6">
             <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
                 <div>
                     <h1 class="text-xl font-bold flex items-center gap-2">
                         <span>Kabinet Učitele:</span>
                         <input type="text" id="pollTitleInput" value="Moje nové hlasování" class="bg-transparent border-b border-dashed border-slate-400 focus:border-sky-500 outline-none px-1 font-semibold text-sky-600 dark:text-sky-400">
                     </h1>
-                    <p class="text-xs text-slate-500 mt-1">Aktivní PIN relace: <span id="teacherPin" class="font-mono font-bold text-sky-600">---</span></p>
+                    <!-- Mikro-úvod přímo pod názvem -->
+                    <p class="text-xs text-slate-500 dark:text-slate-400 mt-1 flex items-center gap-1.5">
+                        <i data-lucide="sparkles" class="w-3.5 h-3.5 text-sky-500 shrink-0"></i>
+                        <span>Připravte otázky, uložte sadu nebo rovnou spusťte živou prezentaci. PIN: <strong id="teacherPin" class="font-mono text-sky-600 dark:text-sky-400">---</strong></span>
+                    </p>
                 </div>
 
                 <div class="flex flex-wrap items-center gap-2">
@@ -128,6 +123,11 @@
                         </select>
                     </div>
 
+                    <button onclick="downloadPollJSON()" class="px-3 py-2 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 font-medium rounded-lg text-sm transition flex items-center space-x-1" title="Stáhnout sadu otázek na disk">
+                        <i data-lucide="download" class="w-4 h-4"></i>
+                        <span>Stáhnout sadu</span>
+                    </button>
+
                     <button onclick="saveCurrentPollToCloud()" class="px-3 py-2 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 font-medium rounded-lg text-sm transition flex items-center space-x-1">
                         <i data-lucide="cloud-upload" class="w-4 h-4"></i>
                         <span>Uložit sadu</span>
@@ -136,7 +136,6 @@
                         <i data-lucide="play" class="w-4 h-4"></i>
                         <span>Spustit prezentaci</span>
                     </button>
-                    <button onclick="showRoleSelector()" class="px-3 py-2 bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 rounded-lg text-sm font-medium transition">Zpět</button>
                 </div>
             </div>
 
@@ -179,7 +178,19 @@
                         <input type="text" id="questionText" placeholder="Napište otázku..." class="w-full p-2.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-sky-500">
                     </div>
 
-                    <!-- Obrázek k otázce -->
+                    <!-- POČET POVOLENÝCH ODPOVĚDÍ (Cloud & Open) -->
+                    <div id="maxResponsesArea" class="hidden">
+                        <label class="block text-sm font-medium mb-1">Kolik odpovědí může účastník poslat?</label>
+                        <select id="maxResponsesSelect" class="w-full p-2.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-sky-500">
+                            <option value="1">Pouze 1 odpověď</option>
+                            <option value="2">Maximálně 2 odpovědi</option>
+                            <option value="3">Maximálně 3 odpovědi</option>
+                            <option value="5">Maximálně 5 odpovědí</option>
+                            <option value="unlimited">Neomezeně odpovědí</option>
+                        </select>
+                    </div>
+
+                    <!-- PŘIDÁNÍ OBRÁZKU -->
                     <div class="p-3 bg-slate-50 dark:bg-slate-700/50 rounded-lg border border-slate-200 dark:border-slate-600 space-y-2">
                         <label class="block text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase">Obrázek k otázce (Volitelné)</label>
                         <div class="flex flex-col sm:flex-row items-center gap-3">
@@ -204,18 +215,46 @@
                     <div class="flex justify-between pt-4 border-t border-slate-200 dark:border-slate-700">
                         <button onclick="saveQuestion()" class="px-4 py-2 bg-sky-600 hover:bg-sky-700 text-white font-medium rounded-lg transition flex items-center space-x-1">
                             <i data-lucide="check" class="w-4 h-4"></i>
-                            <span>Aktualizovat otázku</span>
+                            <span>Uložit otázku</span>
                         </button>
                         <button onclick="deleteCurrentQuestion()" class="px-3 py-2 bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 hover:bg-red-200 rounded-lg text-sm transition">Smazat</button>
                     </div>
                 </div>
 
-                <!-- Seznam otázek -->
+                <!-- Seznam otázek + Empty State -->
                 <div class="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 flex flex-col justify-between">
                     <div>
                         <h2 class="text-lg font-bold border-b border-slate-200 dark:border-slate-700 pb-2 mb-4">Otázky v této sadě</h2>
+                        
+                        <!-- Seznam otázek -->
                         <div id="questionsList" class="space-y-2 max-h-80 overflow-y-auto"></div>
+
+                        <!-- Prázdný stav (Empty State) -->
+                        <div id="emptyState" class="hidden flex-col items-center justify-center p-6 text-center border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50/50 dark:bg-slate-800/30 my-4">
+                            <div class="w-12 h-12 bg-sky-100 dark:bg-sky-950/50 text-sky-600 dark:text-sky-400 rounded-full flex items-center justify-center mb-3">
+                                <i data-lucide="file-question" class="w-6 h-6"></i>
+                            </div>
+                            <h3 class="font-semibold text-slate-800 dark:text-slate-200 mb-1 text-sm">Zatím nemáte žádné otázky</h3>
+                            <p class="text-xs text-slate-500 dark:text-slate-400 mb-4">
+                                Vyberte typ otázky v editoru vlevo a vytvořte svou první otázku pro hlasování.
+                            </p>
+                            <div class="flex flex-col gap-1.5 text-xs text-slate-600 dark:text-slate-300 text-left">
+                                <div class="flex items-center gap-2">
+                                    <span class="w-4 h-4 rounded-full bg-sky-100 dark:bg-sky-900 text-sky-700 dark:text-sky-300 font-bold flex items-center justify-center text-[10px]">1</span>
+                                    <span>Napište znění v editoru</span>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <span class="w-4 h-4 rounded-full bg-sky-100 dark:bg-sky-900 text-sky-700 dark:text-sky-300 font-bold flex items-center justify-center text-[10px]">2</span>
+                                    <span>Klikněte na „Uložit otázku“</span>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <span class="w-4 h-4 rounded-full bg-sky-100 dark:bg-sky-900 text-sky-700 dark:text-sky-300 font-bold flex items-center justify-center text-[10px]">3</span>
+                                    <span>Spusťte živou prezentaci</span>
+                                </div>
+                            </div>
+                        </div>
                     </div>
+
                     <button onclick="addNewQuestion()" class="mt-4 w-full py-2 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 font-medium rounded-lg transition flex items-center justify-center space-x-2">
                         <i data-lucide="plus-circle" class="w-4 h-4"></i>
                         <span>Nová otázka</span>
@@ -224,7 +263,7 @@
             </div>
         </div>
 
-        <!-- POHLED ŽÁKA -->
+        <!-- POHLED ŽÁKA / ÚČASTNÍKA -->
         <div id="studentView" class="hidden max-w-md mx-auto space-y-6">
             <div id="studentJoinCard" class="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-md border border-slate-200 dark:border-slate-700 space-y-4">
                 <h2 class="text-xl font-bold text-center">Připojit se k hlasování</h2>
@@ -237,7 +276,7 @@
                     <input type="text" id="joinNameInput" placeholder="Jan Novák" class="w-full p-2.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700">
                 </div>
                 <button onclick="joinSession()" class="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg shadow transition">Vstoupit do místnosti</button>
-                <button onclick="showRoleSelector()" class="w-full py-2 text-sm text-slate-500 hover:underline text-center block">Zpět</button>
+                <button onclick="showTeacherView()" class="w-full py-2 text-sm text-slate-500 hover:underline text-center block">Zpět do kabinetu</button>
             </div>
 
             <!-- Rozhraní hlasování žáka -->
@@ -277,7 +316,7 @@
                     
                     <div id="studentSubmittedMessage" class="hidden p-4 bg-emerald-50 dark:bg-emerald-900/30 border border-emerald-200 dark:border-emerald-800 rounded-xl text-center space-y-1">
                         <p class="font-bold text-emerald-700 dark:text-emerald-300">Odpověď byla odeslána!</p>
-                        <p class="text-xs text-emerald-600 dark:text-emerald-400">Počkejte na další zadání od učitele.</p>
+                        <p id="studentResponseCountText" class="text-xs text-emerald-600 dark:text-emerald-400">Počkejte na další zadání od učitele.</p>
                     </div>
                 </div>
             </div>
@@ -290,7 +329,7 @@
                 <div class="flex items-center space-x-4">
                     <div class="flex items-center space-x-2">
                         <span class="text-xs text-slate-400 uppercase font-semibold">Připojte se na:</span>
-                        <span id="presWebUrl" class="font-semibold text-sky-600 underline">tinyurl.com/hlasujeme</span>
+                        <span id="presWebUrl" class="font-semibold text-sky-600 underline">1url.cz/@hlasujto</span>
                     </div>
                     <div class="flex items-center space-x-2 bg-sky-50 dark:bg-sky-900/30 px-3 py-1 rounded-lg border border-sky-200 dark:border-sky-800">
                         <span class="text-xs text-slate-500 uppercase font-semibold">PIN:</span>
@@ -304,19 +343,14 @@
                 <div class="flex items-center space-x-2">
                     <span id="presCount" class="text-xs px-2.5 py-1.5 bg-slate-100 dark:bg-slate-700 rounded-lg text-slate-600 dark:text-slate-300 font-medium">Účastníci: 0</span>
 
+                    <button onclick="downloadResultsCSV()" class="px-3 py-1.5 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 rounded-lg text-xs font-semibold flex items-center space-x-1 transition" title="Stáhnout výsledky jako CSV (Excel)">
+                        <i data-lucide="download" class="w-4 h-4 text-emerald-600"></i>
+                        <span>Výsledky (CSV)</span>
+                    </button>
+
                     <button id="toggleHideResultsBtn" onclick="toggleHideResults()" class="px-3 py-1.5 bg-sky-600 hover:bg-sky-700 text-white rounded-lg text-xs font-semibold flex items-center space-x-1 transition shadow">
                         <i data-lucide="eye" id="hideIcon" class="w-4 h-4"></i>
                         <span id="hideText">Odkrýt výsledky</span>
-                    </button>
-
-                    <!-- Tlačítka pro export CSV a PDF -->
-                    <button onclick="exportResultsCSV()" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-semibold flex items-center space-x-1 transition shadow" title="Stáhnout tabulku v CSV/Excelu">
-                        <i data-lucide="file-spreadsheet" class="w-4 h-4"></i>
-                        <span>CSV</span>
-                    </button>
-                    <button onclick="exportResultsPDF()" class="px-3 py-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-xs font-semibold flex items-center space-x-1 transition shadow" title="Stáhnout prezentaci v PDF">
-                        <i data-lucide="file-text" class="w-4 h-4"></i>
-                        <span>PDF</span>
                     </button>
 
                     <div class="flex space-x-1 pl-2 border-l border-slate-200 dark:border-slate-700">
@@ -329,25 +363,25 @@
             </div>
 
             <!-- Hlavní Plátno -->
-            <div id="presentationCanvas" class="bg-white dark:bg-slate-800 p-8 rounded-xl shadow-lg border border-slate-200 dark:border-slate-700 min-h-[420px] flex flex-col justify-between relative overflow-hidden">
+            <div class="bg-white dark:bg-slate-800 p-8 rounded-xl shadow-lg border border-slate-200 dark:border-slate-700 min-h-[420px] flex flex-col justify-between relative overflow-hidden">
                 
-                <!-- SNÍMEK 0: ÚVODNÍ SPOJOVACÍ OBRAZOVKA -->
+                <!-- Úvodní spojovací obrazovka -->
                 <div id="introSlide" class="flex flex-col items-center justify-center text-center py-6 space-y-6 my-auto">
                     <h1 class="text-3xl md:text-4xl font-extrabold text-slate-800 dark:text-white">Připojte se k hlasování</h1>
                     
                     <div class="flex flex-col md:flex-row items-center justify-center gap-8 my-4">
                         <div class="bg-white p-4 rounded-2xl shadow-md border border-slate-200 flex flex-col items-center">
                             <div id="introQrCode" class="p-2"></div>
-                            <span class="text-xs text-slate-400 mt-2">Naskenujte fotoaparátem</span>
+                            <span class="text-xs text-slate-400 mt-2">Naskenujte pro přímé připojení</span>
                         </div>
 
                         <div class="flex flex-col items-center md:items-start space-y-3">
                             <div class="text-left">
-                                <span class="text-sm text-slate-400 uppercase tracking-wider">1. Otevřete v prohlížeči</span>
-                                <p id="introFullUrl" class="text-xl font-bold text-sky-600 font-mono">tinyurl.com/hlasujeme</p>
+                                <span class="text-sm text-slate-400 uppercase tracking-wider">1. OTEVŘETE V MOBILU</span>
+                                <p id="introFullUrl" class="text-xl font-bold text-sky-600 font-mono">1url.cz/@hlasujto</p>
                             </div>
                             <div class="text-left">
-                                <span class="text-sm text-slate-400 uppercase tracking-wider">2. Zadejte PIN kód</span>
+                                <span class="text-sm text-slate-400 uppercase tracking-wider">2. ZADEJTE KÓD MÍSTNOSTI</span>
                                 <p id="introPinDisplay" class="text-5xl font-black text-sky-600 font-mono tracking-widest"></p>
                             </div>
                         </div>
@@ -359,7 +393,7 @@
                     </button>
                 </div>
 
-                <!-- BĚŽNÝ SNÍMEK OTÁZKY -->
+                <!-- Snímek otázky -->
                 <div id="questionSlide" class="hidden flex-grow flex flex-col justify-between">
                     <h1 id="presQuestionTitle" class="text-2xl md:text-3xl font-bold text-center mb-4"></h1>
                     
@@ -385,6 +419,39 @@
                 <p id="modalPinDisplay" class="text-3xl font-black text-sky-600 font-mono tracking-wider"></p>
             </div>
             <button onclick="closeQrModal()" class="w-full py-2 bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-200 font-medium rounded-lg hover:bg-slate-300">Zavřít</button>
+        </div>
+    </div>
+
+    <!-- MODÁLNÍ OKNO NÁPOVĚDY "JAK TO FUNGUJE?" -->
+    <div id="helpModal" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-white dark:bg-slate-800 rounded-2xl max-w-md w-full p-6 shadow-xl border border-slate-200 dark:border-slate-700 relative">
+            <button onclick="toggleHelpModal(false)" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
+                <i data-lucide="x" class="w-5 h-5"></i>
+            </button>
+            
+            <div class="flex items-center gap-2 mb-4">
+                <i data-lucide="book-open" class="w-5 h-5 text-sky-600"></i>
+                <h2 class="text-lg font-bold text-slate-900 dark:text-white">Jak Hlasuj.to funguje?</h2>
+            </div>
+
+            <ol class="space-y-3 text-sm text-slate-600 dark:text-slate-300 mb-6">
+                <li class="flex gap-3">
+                    <span class="font-bold text-sky-600 shrink-0">1.</span>
+                    <span><strong>Vytvořte otázky:</strong> Pomocí editoru připravte znění otázek a možnosti. Sady si můžete uložit do cloudu.</span>
+                </li>
+                <li class="flex gap-3">
+                    <span class="font-bold text-sky-600 shrink-0">2.</span>
+                    <span><strong>Spusťte prezentaci:</strong> Klikněte na <em>„Spustit prezentaci“</em>. Na plátně se zobrazí QR kód a PIN.</span>
+                </li>
+                <li class="flex gap-3">
+                    <span class="font-bold text-sky-600 shrink-0">3.</span>
+                    <span><strong>Připojení žáků:</strong> Žáci naskenují QR kód nebo zadají PIN na svých telefonech a mohou ihned hlasovat.</span>
+                </li>
+            </ol>
+
+            <button onclick="toggleHelpModal(false)" class="w-full py-2.5 bg-sky-600 hover:bg-sky-700 text-white font-medium text-sm rounded-lg transition">
+                Rozumím, pokračovat
+            </button>
         </div>
     </div>
 
@@ -421,7 +488,7 @@
 
     <!-- Aplikační Logika -->
     <script>
-        const DISPLAY_SHORT_URL = "tinyurl.com/hlasujeme";
+        const DISPLAY_SHORT_URL = "1url.cz/@hlasujto";
 
         let currentPollId = null;
         let questions = [
@@ -430,10 +497,11 @@
                 type: 'mc',
                 text: 'Jaká je vaše nejoblíbenější barva?',
                 options: ['Červená', 'Modrá', 'Zelená', 'Žlutá'],
+                maxResponses: '1',
                 imageUrl: null
             }
         ];
-        let currentQuestionIndex = -1;
+        let currentQuestionIndex = 0;
         let studentCurrentQuestionIndex = 0; 
         let currentSessionPin = Math.floor(100000 + Math.random() * 900000).toString();
         let currentUploadedImageBase64 = null;
@@ -443,7 +511,6 @@
         let resultsHidden = true;
         let paceMode = 'teacher'; 
         let currentStudentName = '';
-        let lastRenderedQuestionId = null;
         let activeStudentQuestion = null;
 
         lucide.createIcons();
@@ -452,28 +519,27 @@
             document.documentElement.classList.toggle('dark');
         }
 
-        function selectRole(role) {
-            document.getElementById('roleSelector').classList.add('hidden');
-            if (role === 'teacher') {
-                document.getElementById('teacherView').classList.remove('hidden');
-                document.getElementById('teacherPin').innerText = currentSessionPin;
-                renderQuestionsList();
-                currentQuestionIndex = 0;
-                loadCurrentQuestionToEditor();
-                if (window.loadUserPolls) window.loadUserPolls();
+        function toggleHelpModal(show) {
+            const modal = document.getElementById('helpModal');
+            if (show) {
+                modal.classList.remove('hidden');
             } else {
-                document.getElementById('studentView').classList.remove('hidden');
+                modal.classList.add('hidden');
             }
         }
 
-        function showRoleSelector() {
-            document.getElementById('teacherView').classList.add('hidden');
+        function showTeacherView() {
             document.getElementById('studentView').classList.add('hidden');
             document.getElementById('presentationView').classList.add('hidden');
-            document.getElementById('roleSelector').classList.remove('hidden');
+            document.getElementById('teacherView').classList.remove('hidden');
         }
 
-        // UNIVERZÁLNÍ NAHRÁNÍ OBRÁZKU
+        function showStudentView() {
+            document.getElementById('teacherView').classList.add('hidden');
+            document.getElementById('presentationView').classList.add('hidden');
+            document.getElementById('studentView').classList.remove('hidden');
+        }
+
         function handleImageUpload(e) {
             const file = e.target.files[0];
             if (!file) return;
@@ -527,6 +593,51 @@
         function removeQuestionImage() {
             currentUploadedImageBase64 = null;
             showImagePreview(null);
+        }
+
+        // --- STAHOVÁNÍ A EXPORT ---
+        function downloadPollJSON() {
+            saveQuestion();
+            const title = document.getElementById('pollTitleInput').value.trim() || 'hlasovani';
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify({
+                title: title,
+                paceMode: paceMode,
+                questions: questions
+            }, null, 2));
+            
+            const downloadAnchor = document.createElement('a');
+            downloadAnchor.setAttribute("href", dataStr);
+            downloadAnchor.setAttribute("download", `${title.toLowerCase().replace(/\s+/g, '_')}_sada.json`);
+            document.body.appendChild(downloadAnchor);
+            downloadAnchor.click();
+            downloadAnchor.remove();
+        }
+
+        function downloadResultsCSV() {
+            if (!sessionAnswers || sessionAnswers.length === 0) {
+                alert("Zatím nebyly zaznamenány žádné odpovědi ke stažení.");
+                return;
+            }
+
+            const title = document.getElementById('pollTitleInput').value.trim() || 'vysledky';
+            let csvContent = "\uFEFF"; // UTF-8 BOM pro správné zobrazení češtiny v Excelu
+            csvContent += "Otázka ID;Žák;Odpověď;Čas\n";
+
+            sessionAnswers.forEach(a => {
+                const dateStr = a.timestamp ? new Date(a.timestamp).toLocaleString('cs-CZ') : '';
+                const student = (a.student || '').replace(/;/g, ',');
+                const answer = (a.answer || '').replace(/;/g, ',');
+                csvContent += `"${a.questionId}";"${student}";"${answer}";"${dateStr}"\n`;
+            });
+
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.setAttribute('href', url);
+            link.setAttribute('download', `${title.toLowerCase().replace(/\s+/g, '_')}_vysledky.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
         }
 
         // --- CLOUD FIREBASE ---
@@ -673,10 +784,17 @@
         function changeQuestionType() {
             const type = document.getElementById('questionType').value;
             const mcArea = document.getElementById('mcOptionsArea');
+            const maxResponsesArea = document.getElementById('maxResponsesArea');
+
             if (type === 'mc') {
                 mcArea.classList.remove('hidden');
+                maxResponsesArea.classList.add('hidden');
+            } else if (type === 'cloud' || type === 'open') {
+                mcArea.classList.add('hidden');
+                maxResponsesArea.classList.remove('hidden');
             } else {
                 mcArea.classList.add('hidden');
+                maxResponsesArea.classList.add('hidden');
             }
         }
 
@@ -711,6 +829,7 @@
             if (currentQuestionIndex < 0) return;
             const type = document.getElementById('questionType').value;
             const text = document.getElementById('questionText').value;
+            const maxResponses = document.getElementById('maxResponsesSelect').value;
             let options = [];
 
             if (type === 'mc') {
@@ -718,18 +837,32 @@
                 inputs.forEach(inp => { if(inp.value.trim()) options.push(inp.value.trim()); });
             }
 
-            questions[currentQuestionIndex] = {
-                id: questions[currentQuestionIndex]?.id || "q_" + Date.now(),
-                type: type,
-                text: text,
-                options: options,
-                imageUrl: currentUploadedImageBase64
-            };
+            if (questions.length === 0) {
+                questions.push({
+                    id: "q_" + Date.now(),
+                    type: type,
+                    text: text,
+                    options: options,
+                    maxResponses: maxResponses || '1',
+                    imageUrl: currentUploadedImageBase64
+                });
+                currentQuestionIndex = 0;
+            } else {
+                questions[currentQuestionIndex] = {
+                    id: questions[currentQuestionIndex]?.id || "q_" + Date.now(),
+                    type: type,
+                    text: text,
+                    options: options,
+                    maxResponses: maxResponses || '1',
+                    imageUrl: currentUploadedImageBase64
+                };
+            }
 
             renderQuestionsList();
         }
 
         function loadCurrentQuestionToEditor() {
+            if (questions.length === 0) return;
             if (currentQuestionIndex < 0) currentQuestionIndex = 0;
             const q = questions[currentQuestionIndex];
             if (!q) return;
@@ -737,6 +870,7 @@
             document.getElementById('questionCounter').innerText = `Otázka ${currentQuestionIndex + 1}`;
             document.getElementById('questionType').value = q.type;
             document.getElementById('questionText').value = q.text;
+            document.getElementById('maxResponsesSelect').value = q.maxResponses || '1';
             
             currentUploadedImageBase64 = q.imageUrl || null;
             showImagePreview(currentUploadedImageBase64);
@@ -749,7 +883,18 @@
 
         function renderQuestionsList() {
             const container = document.getElementById('questionsList');
+            const emptyState = document.getElementById('emptyState');
             container.innerHTML = '';
+
+            if (questions.length === 0) {
+                emptyState.classList.remove('hidden');
+                emptyState.classList.add('flex');
+                return;
+            } else {
+                emptyState.classList.add('hidden');
+                emptyState.classList.remove('flex');
+            }
+
             questions.forEach((q, idx) => {
                 const btn = document.createElement('button');
                 btn.className = `w-full text-left p-2.5 rounded-lg text-sm font-medium transition flex items-center justify-between ${idx === currentQuestionIndex ? 'bg-sky-100 dark:bg-sky-900/40 text-sky-700 dark:text-sky-300' : 'hover:bg-slate-100 dark:hover:bg-slate-700'}`;
@@ -772,12 +917,14 @@
         }
 
         function addNewQuestion() {
-            saveQuestion();
+            if (questions.length > 0) saveQuestion();
+            
             questions.push({
                 id: "q_" + Date.now(),
                 type: 'mc',
                 text: '',
                 options: ['Možnost 1', 'Možnost 2'],
+                maxResponses: '1',
                 imageUrl: null
             });
             currentQuestionIndex = questions.length - 1;
@@ -786,10 +933,17 @@
         }
 
         function deleteCurrentQuestion() {
-            if (questions.length <= 1) return alert('Musí zůstat alespoň jedna otázka.');
+            if (questions.length === 0) return;
             questions.splice(currentQuestionIndex, 1);
             currentQuestionIndex = Math.max(0, currentQuestionIndex - 1);
-            loadCurrentQuestionToEditor();
+            
+            if (questions.length > 0) {
+                loadCurrentQuestionToEditor();
+            } else {
+                document.getElementById('questionText').value = '';
+                document.getElementById('questionCounter').innerText = 'Otázka 1';
+                removeQuestionImage();
+            }
             renderQuestionsList();
         }
 
@@ -799,6 +953,11 @@
 
         // --- PREZENTACE & PREZENTAČNÍ OBSLUHA ---
         async function startPresentation() {
+            if (questions.length === 0) {
+                alert("Před spuštěním prezentace prosím vytvořte alespoň jednu otázku.");
+                return;
+            }
+
             saveQuestion();
             resultsHidden = true;
             updateResultsToggleButtonUI();
@@ -810,6 +969,7 @@
             
             const directJoinUrl = `${window.location.origin}${window.location.pathname}?pin=${currentSessionPin}`;
 
+            document.getElementById('teacherPin').innerText = currentSessionPin;
             document.getElementById('presPin').innerText = currentSessionPin;
             document.getElementById('presWebUrl').innerText = DISPLAY_SHORT_URL;
             document.getElementById('introFullUrl').innerText = DISPLAY_SHORT_URL;
@@ -907,7 +1067,6 @@
             const q = questions[currentQuestionIndex];
             document.getElementById('presQuestionTitle').innerText = q ? `${currentQuestionIndex + 1}. ${q.text}` : '';
             
-            // Zobrazení obrázku v prezentaci
             const imgContainer = document.getElementById('presImageContainer');
             const img = document.getElementById('presQuestionImage');
             if (q && q.imageUrl) {
@@ -1034,64 +1193,7 @@
                     }
 
                     updatePresentationView();
-                }
-            });
-        }
-
-        // --- EXPORT VÝSLEDKŮ DO CSV A PDF ---
-        function exportResultsCSV() {
-            if (!sessionAnswers || sessionAnswers.length === 0) {
-                alert("Zatím nebyly zaznamenány žádné odpovědi ke stažení.");
-                return;
-            }
-
-            let csvContent = "\uFEFF"; // UTF-8 BOM pro správnou češtinu v Excelu
-            csvContent += "Otazka;Student;Odpoved;Cas\n";
-
-            sessionAnswers.forEach(a => {
-                const qObj = questions.find(q => String(q.id) === String(a.questionId));
-                const qTitle = qObj ? `"${qObj.text.replace(/"/g, '""')}"` : "Neznámá otázka";
-                const studentName = `"${(a.student || "Anonym").replace(/"/g, '""')}"`;
-                const answerText = `"${(a.answer || "").replace(/"/g, '""')}"`;
-                const dateStr = a.timestamp ? new Date(a.timestamp).toLocaleString("cs-CZ") : "";
-
-                csvContent += `${qTitle};${studentName};${answerText};${dateStr}\n`;
-            });
-
-            const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-            const url = URL.createObjectURL(blob);
-            const link = document.createElement("a");
-            
-            link.setAttribute("href", url);
-            link.setAttribute("download", `vysledky_PIN_${currentSessionPin}.csv`);
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-        }
-
-        function exportResultsPDF() {
-            const canvas = document.getElementById("presentationCanvas");
-            if (!canvas) return;
-
-            const wasHidden = resultsHidden;
-            if (resultsHidden) {
-                resultsHidden = false;
-                updatePresentationView();
-            }
-
-            const pollTitle = document.getElementById('pollTitleInput').value || 'vysledky';
-            const opt = {
-                margin:       10,
-                filename:     `${pollTitle}_PIN_${currentSessionPin}.pdf`,
-                image:        { type: 'jpeg', quality: 0.98 },
-                html2canvas:  { scale: 2 },
-                jsPDF:        { unit: 'mm', format: 'a4', orientation: 'landscape' }
-            };
-
-            html2pdf().set(opt).from(canvas).save().then(() => {
-                if (wasHidden) {
-                    resultsHidden = true;
-                    updatePresentationView();
+                    updateStudentResponseState();
                 }
             });
         }
@@ -1114,8 +1216,6 @@
         function renderStudentQuestion(q) {
             const activeCard = document.getElementById('studentActiveQuestion');
             const waitingCard = document.getElementById('studentWaiting');
-            const submitBtn = document.getElementById('submitAnswerBtn');
-            const submittedMsg = document.getElementById('studentSubmittedMessage');
 
             if (!q) {
                 waitingCard.classList.remove('hidden');
@@ -1123,18 +1223,10 @@
                 return;
             }
 
-            if (lastRenderedQuestionId !== q.id) {
-                lastRenderedQuestionId = q.id;
-                submitBtn.disabled = false;
-                submitBtn.classList.remove('hidden');
-                submittedMsg.classList.add('hidden');
-            }
-
             waitingCard.classList.add('hidden');
             activeCard.classList.remove('hidden');
             document.getElementById('studentQuestionTitle').innerText = q.text;
 
-            // Zobrazení obrázku pro žáka
             const imgContainer = document.getElementById('studentImageContainer');
             const img = document.getElementById('studentQuestionImage');
             if (q.imageUrl) {
@@ -1169,6 +1261,37 @@
                 `;
             } else {
                 area.innerHTML = `<input type="text" id="studentTextInput" placeholder="Napište vaši odpověď..." class="w-full p-3.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 focus:ring-2 focus:ring-sky-500 outline-none">`;
+            }
+
+            updateStudentResponseState();
+        }
+
+        function updateStudentResponseState() {
+            const q = (paceMode === 'student') ? questions[studentCurrentQuestionIndex] : activeStudentQuestion;
+            if (!q) return;
+
+            const myAnswers = sessionAnswers.filter(a => String(a.questionId) === String(q.id) && a.student === currentStudentName);
+            const count = myAnswers.length;
+            const max = q.maxResponses || '1';
+
+            const submitBtn = document.getElementById('submitAnswerBtn');
+            const submittedMsg = document.getElementById('studentSubmittedMessage');
+            const countText = document.getElementById('studentResponseCountText');
+
+            if (max !== 'unlimited' && count >= parseInt(max, 10)) {
+                submitBtn.classList.add('hidden');
+                submittedMsg.classList.remove('hidden');
+                countText.innerText = `Odesláno ${count} z ${max} odpovědí. Děkujeme!`;
+            } else {
+                submitBtn.classList.remove('hidden');
+                if (count > 0) {
+                    submittedMsg.classList.remove('hidden');
+                    countText.innerText = max === 'unlimited' 
+                        ? `Odesláno ${count} odpovědí. Můžete poslat další!` 
+                        : `Odesláno ${count} z ${max} odpovědí. Můžete poslat ještě další.`;
+                } else {
+                    submittedMsg.classList.add('hidden');
+                }
             }
         }
 
@@ -1229,8 +1352,9 @@
                         })
                     }, { merge: true });
 
-                    document.getElementById('submitAnswerBtn').classList.add('hidden');
-                    document.getElementById('studentSubmittedMessage').classList.remove('hidden');
+                    const inp = document.getElementById('studentTextInput');
+                    if (inp) inp.value = '';
+
                 } catch (e) {
                     console.error("Chyba při odesílání odpovědi:", e);
                     alert("Chyba při odesílání odpovědi.");
@@ -1270,6 +1394,7 @@
                 if (docSnap.exists()) {
                     const data = docSnap.data();
                     
+                    sessionAnswers = data.answers || [];
                     if (data.allQuestions) questions = data.allQuestions;
                     paceMode = data.paceMode || 'teacher';
 
@@ -1287,13 +1412,21 @@
             });
         }
 
-        // AUTOMATICKÉ ČTENÍ URL PINU
+        // AUTOMATICKÉ ČTENÍ PARMETRŮ Z URL (& OTEVŘENÍ POHLEDU ŽÁKA)
         window.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('teacherPin').innerText = currentSessionPin;
+            renderQuestionsList();
+            loadCurrentQuestionToEditor();
+
             const urlParams = new URLSearchParams(window.location.search);
             const pinParam = urlParams.get('pin');
+            const roleParam = urlParams.get('role');
+
             if (pinParam) {
-                selectRole('student');
+                showStudentView();
                 document.getElementById('joinPinInput').value = pinParam;
+            } else if (roleParam === 'student') {
+                showStudentView();
             }
         });
 
