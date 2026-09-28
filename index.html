@@ -685,7 +685,7 @@
         }
 
         // --- PREZENTACE & PREZENTAČNÍ OBSLUHA ---
-        function startPresentation() {
+        async function startPresentation() {
             saveQuestion();
             document.getElementById('teacherView').classList.add('hidden');
             document.getElementById('presentationView').classList.remove('hidden');
@@ -702,8 +702,22 @@
             document.getElementById('modalPinDisplay').innerText = currentSessionPin;
 
             generateQrCodes(joinUrl);
+            
+            // Inicializace relace v databázi
+            if (window.db) {
+                const { doc, setDoc } = window.fbModules;
+                await setDoc(doc(window.db, "sessions", currentSessionPin), {
+                    answers: [],
+                    participants: {},
+                    allQuestions: questions,
+                    currentQuestion: null,
+                    paceMode: paceMode,
+                    pin: currentSessionPin,
+                    updatedAt: Date.now()
+                }, { merge: true });
+            }
+
             updatePresentationView();
-            syncStateToFirebase();
             listenToPresentationAnswers(currentSessionPin);
         }
 
@@ -795,7 +809,7 @@
             }
 
             // Filtrovat odpovědi pro aktuální otázku
-            const filteredAnswers = sessionAnswers.filter(a => a.questionId === q.id);
+            const filteredAnswers = sessionAnswers.filter(a => String(a.questionId) === String(q.id));
 
             if (q.type === 'mc') {
                 const counts = {};
@@ -998,19 +1012,19 @@
             if (!val) return alert('Vyberte nebo napište odpověď.');
 
             if (window.db) {
-                const { doc, updateDoc, arrayUnion } = window.fbModules;
+                const { doc, setDoc, arrayUnion } = window.fbModules;
                 const pin = document.getElementById('joinPinInput').value.trim();
                 const sessionRef = doc(window.db, "sessions", pin);
 
                 try {
-                    await updateDoc(sessionRef, {
+                    await setDoc(sessionRef, {
                         answers: arrayUnion({
                             questionId: q.id,
                             answer: val,
                             student: currentStudentName,
                             timestamp: Date.now()
                         })
-                    });
+                    }, { merge: true });
 
                     // Vizuální odezva pro žáka
                     document.getElementById('submitAnswerBtn').classList.add('hidden');
@@ -1045,8 +1059,10 @@
 
             // Registrace účastníka
             const sessionRef = doc(window.db, "sessions", pin);
-            const participantData = {};
-            participantData[`participants.${currentStudentName.replace(/\./g, '_')}`] = true;
+            const sanitizedName = currentStudentName.replace(/[\.\/\[\]\$#]/g, '_');
+            const participantData = { participants: {} };
+            participantData.participants[sanitizedName] = true;
+            
             setDoc(sessionRef, participantData, { merge: true });
 
             // Poslech stavu otázek
