@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>EduPoll Live</title>
+    <title>Hlasuj.to</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -1296,6 +1296,22 @@
                 loadUserPolls();
             });
         }
+        window.addEventListener('DOMContentLoaded', () => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const pinParam = urlParams.get('pin');
+    const roleParam = urlParams.get('role');
+
+    // Pokud odkaz obsahuje PIN (např. z QR kódu)
+    if (pinParam) {
+        selectRole('student');
+        const pinInput = document.getElementById('joinPinInput');
+        if (pinInput) pinInput.value = pinParam;
+    } 
+    // Pokud odkaz obsahuje ?role=student
+    else if (roleParam === 'student') {
+        selectRole('student');
+    }
+});
     </script>
 </body>
 </html>
