@@ -60,7 +60,7 @@
     <style>
         .word-cloud-item {
             display: inline-block;
-            margin: 5px 10px;
+            margin: 4px 8px;
             transition: all 0.3s ease;
         }
     </style>
@@ -587,9 +587,13 @@
                         const word = String(a.answer).trim();
                         if (word) wordCounts[word] = (wordCounts[word] || 0) + 1;
                     });
+
+                    const palette = ['#0284c7', '#059669', '#d97706', '#dc2626', '#7c3aed', '#db2777', '#0891b2', '#ea580c'];
+
                     qHtml += `<div class="flex flex-wrap gap-2">`;
-                    Object.entries(wordCounts).forEach(([word, count]) => {
-                        qHtml += `<span class="bg-sky-100 text-sky-800 px-2 py-1 rounded text-sm font-bold">${word} (${count}x)</span>`;
+                    Object.entries(wordCounts).forEach(([word, count], i) => {
+                        const color = palette[i % palette.length];
+                        qHtml += `<span class="px-2.5 py-1 rounded-lg text-sm font-bold bg-slate-100 border border-slate-200" style="color: ${color}">${word} (${count}x)</span>`;
                     });
                     if (Object.keys(wordCounts).length === 0) qHtml += `<span class="text-xs text-slate-400">Žádné odpovědi</span>`;
                     qHtml += `</div>`;
@@ -643,7 +647,7 @@
                 title: title,
                 questions: questions,
                 paceMode: paceMode,
-                savedAnswers: sessionAnswers, // Ukládáme i odpovědi respondentů
+                savedAnswers: sessionAnswers,
                 updatedAt: Date.now()
             };
 
@@ -715,7 +719,7 @@
                 pollDoc.forEach(d => {
                     const data = d.data();
                     questions = data.questions || [];
-                    sessionAnswers = data.savedAnswers || []; // Obnovíme uložené odpovědi
+                    sessionAnswers = data.savedAnswers || [];
                     currentPollId = d.id;
                     paceMode = data.paceMode || 'teacher';
                     document.getElementById('paceModePrepSelect').value = paceMode;
@@ -1118,10 +1122,17 @@
                     container.innerHTML = `<p class="text-slate-400 text-sm">Zatím žádné odpovědi...</p>`;
                 } else {
                     const wrapper = document.createElement('div');
-                    wrapper.className = "flex flex-wrap justify-center items-center p-4 gap-2";
-                    Object.entries(wordCounts).forEach(([word, count]) => {
+                    wrapper.className = "flex flex-wrap justify-center items-center p-4 gap-3";
+                    
+                    const palette = [
+                        '#0284c7', '#059669', '#d97706', '#dc2626', '#7c3aed', 
+                        '#db2777', '#0891b2', '#ea580c', '#4f46e5', '#16a34a'
+                    ];
+
+                    Object.entries(wordCounts).forEach(([word, count], i) => {
                         const size = Math.min(1.2 + count * 0.4, 3.5);
-                        wrapper.innerHTML += `<span class="word-cloud-item font-bold text-sky-600 bg-sky-50 dark:bg-sky-900/30 px-3 py-1 rounded-xl" style="font-size: ${size}rem">${word}</span>`;
+                        const color = palette[i % palette.length];
+                        wrapper.innerHTML += `<span class="word-cloud-item font-extrabold px-3 py-1 rounded-xl bg-slate-100 dark:bg-slate-700/50 shadow-sm" style="font-size: ${size}rem; color: ${color};">${word}</span>`;
                     });
                     container.appendChild(wrapper);
                 }
