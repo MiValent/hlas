@@ -1,254 +1,665 @@
 <!DOCTYPE html>
-<html lang="cs" class="h-full font-sans antialiased">
+<html lang="cs">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hlasovací systém</title>
+    <title>EduPoll Live</title>
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: { 50: '#f0f9ff', 100: '#e0f2fe', 500: '#0284c7', 600: '#0369a1', 700: '#075985' }
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Lucide Icons -->
     <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Firebase SDK (Modular) -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getFirestore, doc, setDoc, onSnapshot, updateDoc, arrayUnion, collection, addDoc, getDocs, deleteDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+        import { getAuth, signInWithPopup, GoogleAuthProvider, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+
+        // Konfigurace Firebase s doplněnými klíči z vašich podkladů
+        const firebaseConfig = {
+            apiKey: "AIzaSyBy2l8RInC438v3v155b111-p-D0E1d-6w",
+            authDomain: "edupoll-live-4b531.firebaseapp.com",
+            projectId: "edupoll-live-4b531",
+            storageBucket: "edupoll-live-4b531.firebasestorage.app",
+            messagingSenderId: "123456789012",
+            appId: "1:123456789012:web:abcdef1234567890"
+        };
+
+        // Inicializace Firebase
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const auth = getAuth(app);
+
+        // Zpřístupnění objektů pro globální skript
+        window.db = db;
+        window.auth = auth;
+        window.fbModules = { doc, setDoc, onSnapshot, updateDoc, arrayUnion, collection, addDoc, getDocs, deleteDoc, signInWithPopup, GoogleAuthProvider, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged };
+    </script>
+    <style>
+        .word-cloud-item {
+            display: inline-block;
+            margin: 5px 10px;
+            transition: all 0.3s ease;
+        }
+    </style>
 </head>
-<body class="bg-slate-100 dark:bg-slate-950 text-slate-800 dark:text-slate-100 min-h-full flex flex-col justify-between p-4 sm:p-6">
+<body class="bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 min-h-screen font-sans flex flex-col transition-colors duration-200">
 
-    <!-- HORNI LISTA -->
-    <header class="max-w-5xl w-full mx-auto flex items-center justify-between py-4 border-b border-slate-200 dark:border-slate-800 mb-6">
-        <div class="flex items-center gap-3">
-            <div class="bg-indigo-600 text-white p-2 rounded-xl shadow-md">
-                <i data-lucide="vote" class="w-6 h-6"></i>
+    <!-- Horní lišta -->
+    <header class="bg-white dark:bg-slate-800 shadow-sm border-b border-slate-200 dark:border-slate-700 p-4 sticky top-0 z-50">
+        <div class="max-w-6xl mx-auto flex justify-between items-center">
+            <div class="flex items-center space-x-3">
+                <i data-lucide="bar-chart-2" class="w-8 h-8 text-sky-600"></i>
+                <span class="font-bold text-xl tracking-tight text-slate-900 dark:text-white">EduPoll<span class="text-sky-600">Live</span></span>
             </div>
-            <h1 class="text-2xl font-black tracking-tight text-slate-900 dark:text-white">hlas</h1>
-        </div>
-
-        <div class="flex items-center gap-3">
-            <button id="btn-open-profile" class="flex items-center gap-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-indigo-500 font-semibold text-sm px-4 py-2 rounded-xl shadow-sm transition-all">
-                <i data-lucide="user" class="w-4 h-4 text-indigo-500"></i>
-                <span id="header-user-status">Přihlásit se (Volitelné)</span>
-            </button>
+            
+            <div class="flex items-center space-x-3">
+                <button id="themeToggle" onclick="toggleDarkMode()" class="p-2 rounded-lg bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600 transition">
+                    <i data-lucide="moon" id="themeIcon" class="w-5 h-5"></i>
+                </button>
+                <div id="authStatus" class="flex items-center space-x-2">
+                    <button onclick="openAuthModal()" class="px-3 py-1.5 bg-sky-600 text-white rounded-lg text-sm font-medium hover:bg-sky-700 transition">Přihlásit se</button>
+                </div>
+            </div>
         </div>
     </header>
 
-    <!-- HLAVNI OBSAH APLIKACE (Přístupný bez přihlášení) -->
-    <main class="max-w-5xl w-full mx-auto flex-grow space-y-6">
+    <!-- Hlavní kontejner -->
+    <main class="flex-grow max-w-6xl w-full mx-auto p-4 md:p-6">
         
-        <!-- Ovládací panely / Tvorba hlasování -->
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-            
-            <!-- Levý panel: Nastavení otázky -->
-            <div class="md:col-span-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 rounded-3xl shadow-sm space-y-4">
-                <h2 class="font-bold text-lg text-slate-900 dark:text-white flex items-center gap-2">
-                    <i data-lucide="plus-circle" class="w-5 h-5 text-indigo-500"></i> Nové hlasování
-                </h2>
-
-                <div>
-                    <label class="block text-xs font-semibold text-slate-500 mb-1">Otázka</label>
-                    <input type="text" id="poll-question" placeholder="Napište otázku..." class="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+        <!-- Výběr role -->
+        <div id="roleSelector" class="grid grid-cols-1 md:grid-cols-2 gap-6 my-12">
+            <div onclick="selectRole('teacher')" class="bg-white dark:bg-slate-800 p-8 rounded-2xl shadow-md border border-slate-200 dark:border-slate-700 hover:border-sky-500 dark:hover:border-sky-500 cursor-pointer transition transform hover:-translate-y-1 flex flex-col items-center text-center group">
+                <div class="w-16 h-16 bg-sky-100 dark:bg-sky-900/50 rounded-full flex items-center justify-center text-sky-600 dark:text-sky-400 mb-4 group-hover:scale-110 transition">
+                    <i data-lucide="presentation" class="w-8 h-8"></i>
                 </div>
-
-                <div class="space-y-2">
-                    <label class="block text-xs font-semibold text-slate-500">Možnosti odpovědí</label>
-                    <input type="text" class="poll-option w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm" placeholder="Možnost A">
-                    <input type="text" class="poll-option w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm" placeholder="Možnost B">
-                    <input type="text" class="poll-option w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm" placeholder="Možnost C">
-                </div>
-
-                <button id="btn-start-session" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2.5 px-4 rounded-xl shadow-md transition-all text-sm flex items-center justify-center gap-2">
-                    <i data-lucide="play" class="w-4 h-4"></i> Spustit hlasování
-                </button>
+                <h2 class="text-2xl font-bold mb-2">Učitel / Prezentující</h2>
+                <p class="text-slate-500 dark:text-slate-400">Vytvářejte otázky, spravujte hlasování a prezentujte výsledky v reálném čase.</p>
             </div>
 
-            <!-- Pravý panel: Živý náhled & Výsledky -->
-            <div class="md:col-span-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 rounded-3xl shadow-sm flex flex-col justify-between">
-                <div>
-                    <div class="flex justify-between items-center mb-4">
-                        <h2 class="font-bold text-lg text-slate-900 dark:text-white flex items-center gap-2">
-                            <i data-lucide="bar-chart-2" class="w-5 h-5 text-indigo-500"></i> Živé výsledky
-                        </h2>
-                        <span id="room-pin-display" class="text-xs font-mono font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700">
-                            PIN: ---
-                        </span>
-                    </div>
-
-                    <div id="results-container" class="space-y-3 py-4">
-                        <p class="text-sm text-slate-400 text-center py-8">Zatím neběží žádné hlasování. Vytvořte otázku vlevo a klikněte na Spustit.</p>
-                    </div>
+            <div onclick="selectRole('student')" class="bg-white dark:bg-slate-800 p-8 rounded-2xl shadow-md border border-slate-200 dark:border-slate-700 hover:border-emerald-500 dark:hover:border-emerald-500 cursor-pointer transition transform hover:-translate-y-1 flex flex-col items-center text-center group">
+                <div class="w-16 h-16 bg-emerald-100 dark:bg-emerald-900/50 rounded-full flex items-center justify-center text-emerald-600 dark:text-emerald-400 mb-4 group-hover:scale-110 transition">
+                    <i data-lucide="users" class="w-8 h-8"></i>
                 </div>
+                <h2 class="text-2xl font-bold mb-2">Žák / Účastník</h2>
+                <p class="text-slate-500 dark:text-slate-400">Připojte se k hlasování zadáním PIN kódu zadaného učitelem.</p>
+            </div>
+        </div>
 
-                <div class="border-t border-slate-100 dark:border-slate-800 pt-4 flex justify-between items-center text-xs text-slate-400">
-                    <span>Stav: <strong id="status-text" class="text-slate-600 dark:text-slate-300">Připraveno</strong></span>
-                    <button id="btn-stop-session" class="text-red-500 hover:text-red-700 font-semibold hidden">Ukončit hlasování</button>
+        <!-- POHLED UČITELE -->
+        <div id="teacherView" class="hidden space-y-6">
+            <div class="flex justify-between items-center bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
+                <div>
+                    <h1 class="text-xl font-bold">Kabinety a Správa Otázek</h1>
+                    <p class="text-xs text-slate-500">PIN relace: <span id="teacherPin" class="font-mono font-bold text-sky-600">---</span></p>
+                </div>
+                <div class="flex space-x-2">
+                    <button onclick="startPresentation()" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-medium rounded-lg shadow transition flex items-center space-x-2">
+                        <i data-lucide="play" class="w-4 h-4"></i>
+                        <span>Spustit prezentaci</span>
+                    </button>
+                    <button onclick="showRoleSelector()" class="px-3 py-2 bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 rounded-lg text-sm font-medium transition">Zpět</button>
                 </div>
             </div>
 
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <!-- Editor otázek -->
+                <div class="lg:col-span-2 bg-white dark:bg-slate-800 p-6 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 space-y-4">
+                    <h2 class="text-lg font-bold border-b border-slate-200 dark:border-slate-700 pb-2 flex justify-between items-center">
+                        <span>Editor otázky</span>
+                        <span id="questionCounter" class="text-sm font-normal text-slate-500">Otázka 1</span>
+                    </h2>
+
+                    <div>
+                        <label class="block text-sm font-medium mb-1">Typ otázky</label>
+                        <select id="questionType" onchange="changeQuestionType()" class="w-full p-2.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-sky-500">
+                            <option value="mc">Multiple Choice (Výběr z možností)</option>
+                            <option value="cloud">Word Cloud (Slovní mrak)</option>
+                            <option value="rating">Hodnocení / Škála (1-5)</option>
+                            <option value="open">Otevřená odpověď (Q&A)</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium mb-1">Znění otázky</label>
+                        <input type="text" id="questionText" placeholder="Napište otázku..." class="w-full p-2.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-sky-500">
+                    </div>
+
+                    <!-- Možnosti pro MC -->
+                    <div id="mcOptionsArea" class="space-y-3">
+                        <label class="block text-sm font-medium">Možnosti odpovědí</label>
+                        <div id="optionsList" class="space-y-2">
+                            <!-- Dynamicky vkládané možnosti -->
+                        </div>
+                        <button onclick="addOptionInput()" class="text-sm text-sky-600 dark:text-sky-400 hover:underline font-medium flex items-center space-x-1">
+                            <i data-lucide="plus" class="w-4 h-4"></i>
+                            <span>Přidat možnost</span>
+                        </button>
+                    </div>
+
+                    <div class="flex justify-between pt-4 border-t border-slate-200 dark:border-slate-700">
+                        <button onclick="saveQuestion()" class="px-4 py-2 bg-sky-600 hover:bg-sky-700 text-white font-medium rounded-lg transition flex items-center space-x-1">
+                            <i data-lucide="save" class="w-4 h-4"></i>
+                            <span>Uložit otázku</span>
+                        </button>
+                        <button onclick="deleteCurrentQuestion()" class="px-3 py-2 bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 hover:bg-red-200 rounded-lg text-sm transition">Smazat</button>
+                    </div>
+                </div>
+
+                <!-- Seznam otázek -->
+                <div class="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 flex flex-col justify-between">
+                    <div>
+                        <h2 class="text-lg font-bold border-b border-slate-200 dark:border-slate-700 pb-2 mb-4">Seznam otázek</h2>
+                        <div id="questionsList" class="space-y-2 max-h-80 overflow-y-auto">
+                            <!-- Seznam všech uložených otázek -->
+                        </div>
+                    </div>
+                    <button onclick="addNewQuestion()" class="mt-4 w-full py-2 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 font-medium rounded-lg transition flex items-center justify-center space-x-2">
+                        <i data-lucide="plus-circle" class="w-4 h-4"></i>
+                        <span>Nová otázka</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- POHLED ŽÁKA -->
+        <div id="studentView" class="hidden max-w-md mx-auto space-y-6">
+            <!-- Login k relaci -->
+            <div id="studentJoinCard" class="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-md border border-slate-200 dark:border-slate-700 space-y-4">
+                <h2 class="text-xl font-bold text-center">Připojit se k hlasování</h2>
+                <div>
+                    <label class="block text-sm font-medium mb-1">PIN Kód relace</label>
+                    <input type="text" id="joinPinInput" placeholder="Zadejte PIN" class="w-full text-center text-2xl font-mono tracking-widest p-3 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 uppercase">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium mb-1">Vaše jméno / přezdívka</label>
+                    <input type="text" id="joinNameInput" placeholder="Jan Novák" class="w-full p-2.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700">
+                </div>
+                <button onclick="joinSession()" class="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg shadow transition">Vstoupit do místnosti</button>
+                <button onclick="showRoleSelector()" class="w-full py-2 text-sm text-slate-500 hover:underline text-center block">Zpět</button>
+            </div>
+
+            <!-- Rozhraní hlasování žáka -->
+            <div id="studentPollCard" class="hidden bg-white dark:bg-slate-800 p-6 rounded-xl shadow-md border border-slate-200 dark:border-slate-700 space-y-6">
+                <div class="flex justify-between items-center text-xs text-slate-500 border-b border-slate-200 dark:border-slate-700 pb-2">
+                    <span id="studentStatus">Připojeno</span>
+                    <span id="studentRoomPin" class="font-mono"></span>
+                </div>
+
+                <div id="studentWaiting" class="text-center py-8 space-y-3">
+                    <i data-lucide="clock" class="w-12 h-12 text-sky-500 mx-auto animate-pulse"></i>
+                    <h3 class="text-lg font-medium">Čekání na učitele...</h3>
+                    <p class="text-sm text-slate-500">Otázka se zobrazí hned, jakmile ji učitel spustí.</p>
+                </div>
+
+                <div id="studentActiveQuestion" class="hidden space-y-4">
+                    <h2 id="studentQuestionTitle" class="text-xl font-bold text-center"></h2>
+                    
+                    <div id="studentAnswerArea" class="space-y-3">
+                        <!-- Zde dynamicky vygenerujeme odpovídající prvky podle typu otázky -->
+                    </div>
+
+                    <button id="submitAnswerBtn" onclick="submitAnswer()" class="w-full py-3 bg-sky-600 hover:bg-sky-700 text-white font-bold rounded-lg shadow transition">Odeslat odpověď</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- PREZENTAČNÍ POHLED UČITELE (ŽIVÉ VÝSLEDKY) -->
+        <div id="presentationView" class="hidden space-y-6">
+            <div class="flex justify-between items-center bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
+                <div class="flex items-center space-x-4">
+                    <span class="text-2xl font-bold text-sky-600 font-mono">PIN: <span id="presPin">----</span></span>
+                    <span id="presCount" class="text-xs px-2.5 py-1 bg-slate-100 dark:bg-slate-700 rounded-full text-slate-600 dark:text-slate-300 font-medium">Účastníci: 0</span>
+                </div>
+                <div class="flex space-x-2">
+                    <button onclick="prevPresQuestion()" class="p-2 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 rounded-lg"><i data-lucide="chevron-left" class="w-5 h-5"></i></button>
+                    <button onclick="nextPresQuestion()" class="p-2 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 rounded-lg"><i data-lucide="chevron-right" class="w-5 h-5"></i></button>
+                    <button onclick="closePresentation()" class="px-3 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-medium transition">Ukončit</button>
+                </div>
+            </div>
+
+            <div class="bg-white dark:bg-slate-800 p-8 rounded-xl shadow-lg border border-slate-200 dark:border-slate-700 min-h-[400px] flex flex-col justify-between">
+                <h1 id="presQuestionTitle" class="text-2xl md:text-3xl font-bold text-center mb-8"></h1>
+
+                <!-- Zobrazení výsledků -->
+                <div id="presResultsContainer" class="flex-grow flex items-center justify-center">
+                    <!-- Dynamické výsledky -->
+                </div>
+            </div>
         </div>
 
     </main>
 
-    <!-- FOOTER -->
-    <footer class="max-w-5xl w-full mx-auto text-center py-4 text-xs text-slate-400">
-        &copy; Hlasovací systém | Přihlášení je dobrovolné
-    </footer>
-
-    <!-- MODAL PRO VOLITELNÉ PŘIHLÁŠENÍ -->
-    <div id="profile-modal" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-        <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 max-w-md w-full shadow-2xl relative">
-            <button id="btn-close-modal" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1">
-                <i data-lucide="x" class="w-5 h-5"></i>
+    <!-- Modal Přihlášení -->
+    <div id="authModal" class="hidden fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-white dark:bg-slate-800 w-full max-w-md p-6 rounded-2xl shadow-xl space-y-4">
+            <div class="flex justify-between items-center">
+                <h3 class="text-lg font-bold">Přihlášení / Registrace</h3>
+                <button onclick="closeAuthModal()" class="text-slate-400 hover:text-slate-600"><i data-lucide="x" class="w-5 h-5"></i></button>
+            </div>
+            
+            <button onclick="loginWithGoogle()" class="w-full py-2.5 border border-slate-300 dark:border-slate-600 rounded-lg flex items-center justify-center space-x-2 hover:bg-slate-50 dark:hover:bg-slate-700 transition font-medium">
+                <i data-lucide="chrome" class="w-5 h-5 text-red-500"></i>
+                <span>Pokračovat přes Google</span>
             </button>
 
-            <h3 class="text-xl font-extrabold text-slate-900 dark:text-white mb-2">Účet Učitele</h3>
-            <p class="text-xs text-slate-500 mb-4">Přihlášení slouží k ukládání vašich připravených otázek do cloudu.</p>
-
-            <!-- Nepřihlášený stav -->
-            <div id="auth-logged-out-view" class="space-y-4">
-                <button id="btn-google-login" type="button" class="w-full flex items-center justify-center gap-3 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-300 dark:border-slate-700 font-semibold py-2.5 px-4 rounded-xl hover:bg-slate-50 transition-all shadow-sm">
-                    <svg class="w-5 h-5" viewBox="0 0 24 24">
-                        <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-                        <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-                        <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
-                        <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
-                    </svg>
-                    Přihlásit přes Google
-                </button>
-
-                <div class="relative flex py-1 items-center">
-                    <div class="flex-grow border-t border-slate-200 dark:border-slate-800"></div>
-                    <span class="flex-shrink mx-3 text-xs text-slate-400">nebo e-mailem</span>
-                    <div class="flex-grow border-t border-slate-200 dark:border-slate-800"></div>
-                </div>
-
-                <div class="space-y-3">
-                    <input type="email" id="auth-email" placeholder="E-mail" class="w-full px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm focus:outline-none">
-                    <input type="password" id="auth-password" placeholder="Heslo" class="w-full px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm focus:outline-none">
-                </div>
-
-                <div class="flex gap-2 pt-2">
-                    <button id="btn-email-login" class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-3 rounded-xl text-xs transition-colors">Přihlásit se</button>
-                    <button id="btn-email-register" class="flex-1 bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 text-slate-700 dark:text-slate-300 font-semibold py-2 px-3 rounded-xl text-xs transition-colors">Registrovat</button>
-                </div>
+            <div class="relative my-4">
+                <div class="absolute inset-0 flex items-center"><div class="w-full border-t border-slate-200 dark:border-slate-700"></div></div>
+                <div class="relative flex justify-center text-xs uppercase"><span class="bg-white dark:bg-slate-800 px-2 text-slate-500">Nebo e-mailem</span></div>
             </div>
 
-            <!-- Přihlášený stav -->
-            <div id="auth-logged-in-view" class="hidden space-y-4">
-                <div class="p-4 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 rounded-2xl flex items-center justify-between">
-                    <div>
-                        <span class="block text-[10px] uppercase font-bold text-emerald-600">Přihlášen jako</span>
-                        <span id="user-email-display" class="text-sm font-semibold text-slate-900 dark:text-white truncate block max-w-[180px]"></span>
-                    </div>
-                    <button id="btn-logout" class="text-xs bg-white dark:bg-slate-800 hover:bg-red-50 hover:text-red-600 border border-slate-200 dark:border-slate-700 px-3 py-2 rounded-xl font-medium transition-colors">
-                        Odhlásit se
-                    </button>
+            <div class="space-y-3">
+                <input type="email" id="authEmail" placeholder="E-mail" class="w-full p-2.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700">
+                <input type="password" id="authPassword" placeholder="Heslo" class="w-full p-2.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700">
+                <div class="flex space-x-2">
+                    <button onclick="loginEmail()" class="w-1/2 py-2 bg-sky-600 text-white rounded-lg font-medium hover:bg-sky-700 transition">Přihlásit</button>
+                    <button onclick="registerEmail()" class="w-1/2 py-2 bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-200 rounded-lg font-medium hover:bg-slate-300 transition">Registrovat</button>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- JAVASCRIPT & FIREBASE -->
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { 
-            getAuth, 
-            signInWithPopup, 
-            GoogleAuthProvider, 
-            signInWithEmailAndPassword, 
-            createUserWithEmailAndPassword, 
-            signOut, 
-            onAuthStateChanged 
-        } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+    <!-- Aplikační Logika -->
+    <script>
+        // Stav aplikace
+        let questions = [
+            {
+                id: 1,
+                type: 'mc',
+                text: 'Jaká je vaše nejoblíbenější barva?',
+                options: ['Červená', 'Modrá', 'Zelená', 'Žlutá'],
+                correct: null
+            }
+        ];
+        let currentQuestionIndex = 0;
+        let currentSessionPin = Math.floor(100000 + Math.random() * 900000).toString();
+        let activeAnswers = {};
+        let currentUser = null;
 
-        const firebaseConfig = {
-            apiKey: "AIzaSyA5wm0BqfTdlxsQ3zQ-i_tpua2R01NQ4Oc",
-            authDomain: "hlasovani-6d722.firebaseapp.com",
-            projectId: "hlasovani-6d722",
-            storageBucket: "hlasovani-6d722.firebasestorage.app",
-            messagingSenderId: "520308415470",
-            appId: "1:520308415470:web:ef73f0abf6068953314cff"
-        };
-
-        const app = initializeApp(firebaseConfig);
-        const auth = getAuth(app);
-        const googleProvider = new GoogleAuthProvider();
-
+        // Inicializace ikon
         lucide.createIcons();
 
-        // Modal ovladani
-        const modal = document.getElementById('profile-modal');
-        document.getElementById('btn-open-profile').addEventListener('click', () => modal.classList.remove('hidden'));
-        document.getElementById('btn-close-modal').addEventListener('click', () => modal.classList.add('hidden'));
+        // Přepínání Tmavého režimu
+        function toggleDarkMode() {
+            document.documentElement.classList.toggle('dark');
+        }
 
-        // Přihlašovací logika
-        document.getElementById('btn-google-login').addEventListener('click', async () => {
-            try { await signInWithPopup(auth, googleProvider); modal.classList.add('hidden'); } catch (e) { alert(e.message); }
-        });
-
-        document.getElementById('btn-email-login').addEventListener('click', async () => {
-            const email = document.getElementById('auth-email').value;
-            const password = document.getElementById('auth-password').value;
-            if (!email || !password) return alert("Vyplňte e-mail a heslo");
-            try { await signInWithEmailAndPassword(auth, email, password); modal.classList.add('hidden'); } catch (e) { alert(e.message); }
-        });
-
-        document.getElementById('btn-email-register').addEventListener('click', async () => {
-            const email = document.getElementById('auth-email').value;
-            const password = document.getElementById('auth-password').value;
-            if (!email || !password) return alert("Vyplňte e-mail a heslo");
-            try { await createUserWithEmailAndPassword(auth, email, password); modal.classList.add('hidden'); } catch (e) { alert(e.message); }
-        });
-
-        document.getElementById('btn-logout').addEventListener('click', () => signOut(auth));
-
-        onAuthStateChanged(auth, (user) => {
-            const loggedOutView = document.getElementById('auth-logged-out-view');
-            const loggedInView = document.getElementById('auth-logged-in-view');
-            const userEmailDisplay = document.getElementById('user-email-display');
-            const headerStatus = document.getElementById('header-user-status');
-
-            if (user) {
-                loggedOutView.classList.add('hidden');
-                loggedInView.classList.remove('hidden');
-                userEmailDisplay.textContent = user.email || 'Uživatel';
-                headerStatus.textContent = user.email ? user.email.split('@')[0] : 'Uživatel';
+        // Výběr Role
+        function selectRole(role) {
+            document.getElementById('roleSelector').classList.add('hidden');
+            if (role === 'teacher') {
+                document.getElementById('teacherView').classList.remove('hidden');
+                document.getElementById('teacherPin').innerText = currentSessionPin;
+                renderQuestionsList();
+                loadCurrentQuestionToEditor();
             } else {
-                loggedOutView.classList.remove('hidden');
-                loggedInView.classList.add('hidden');
-                headerStatus.textContent = 'Přihlásit se (Volitelné)';
+                document.getElementById('studentView').classList.remove('hidden');
             }
-        });
+        }
 
-        // Logika spuštění hlasování (funkční ihned bez přihlášení)
-        document.getElementById('btn-start-session').addEventListener('click', () => {
-            const question = document.getElementById('poll-question').value;
-            if (!question) return alert("Zadejte otázku pro hlasování.");
+        function showRoleSelector() {
+            document.getElementById('teacherView').classList.add('hidden');
+            document.getElementById('studentView').classList.add('hidden');
+            document.getElementById('presentationView').classList.add('hidden');
+            document.getElementById('roleSelector').classList.remove('hidden');
+        }
 
-            const pin = Math.floor(100000 + Math.random() * 900000);
-            document.getElementById('room-pin-display').textContent = `PIN: ${pin}`;
-            document.getElementById('status-text').textContent = "Hlasování probíhá";
-            
-            const resultsContainer = document.getElementById('results-container');
-            resultsContainer.innerHTML = `<h3 class="font-bold text-slate-800 dark:text-white mb-2">${question}</h3>`;
+        // Editor Otázek (Učitel)
+        function changeQuestionType() {
+            const type = document.getElementById('questionType').value;
+            const mcArea = document.getElementById('mcOptionsArea');
+            if (type === 'mc') {
+                mcArea.classList.remove('hidden');
+            } else {
+                mcArea.classList.add('hidden');
+            }
+        }
 
-            const options = document.querySelectorAll('.poll-option');
+        function renderOptionsInputs(options = ['Možnost 1', 'Možnost 2']) {
+            const list = document.getElementById('optionsList');
+            list.innerHTML = '';
             options.forEach((opt, idx) => {
-                if (opt.value.trim() !== "") {
-                    resultsContainer.innerHTML += `
+                const div = document.createElement('div');
+                div.className = "flex items-center space-x-2";
+                div.innerHTML = `
+                    <input type="text" value="${opt}" class="mc-option-input flex-grow p-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-sm">
+                    <button onclick="this.parentElement.remove()" class="text-slate-400 hover:text-red-500"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+                `;
+                list.appendChild(div);
+            });
+            lucide.createIcons();
+        }
+
+        function addOptionInput() {
+            const list = document.getElementById('optionsList');
+            const div = document.createElement('div');
+            div.className = "flex items-center space-x-2";
+            div.innerHTML = `
+                <input type="text" placeholder="Nová možnost" class="mc-option-input flex-grow p-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-sm">
+                <button onclick="this.parentElement.remove()" class="text-slate-400 hover:text-red-500"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+            `;
+            list.appendChild(div);
+            lucide.createIcons();
+        }
+
+        function saveQuestion() {
+            const type = document.getElementById('questionType').value;
+            const text = document.getElementById('questionText').value;
+            let options = [];
+
+            if (type === 'mc') {
+                const inputs = document.querySelectorAll('.mc-option-input');
+                inputs.forEach(inp => { if(inp.value.trim()) options.push(inp.value.trim()); });
+            }
+
+            questions[currentQuestionIndex] = {
+                id: questions[currentQuestionIndex]?.id || Date.now(),
+                type: type,
+                text: text,
+                options: options
+            };
+
+            renderQuestionsList();
+            alert('Otázka uložena');
+        }
+
+        function loadCurrentQuestionToEditor() {
+            const q = questions[currentQuestionIndex];
+            if (!q) return;
+
+            document.getElementById('questionCounter').innerText = `Otázka ${currentQuestionIndex + 1}`;
+            document.getElementById('questionType').value = q.type;
+            document.getElementById('questionText').value = q.text;
+            
+            changeQuestionType();
+            if (q.type === 'mc') {
+                renderOptionsInputs(q.options || []);
+            }
+        }
+
+        function renderQuestionsList() {
+            const container = document.getElementById('questionsList');
+            container.innerHTML = '';
+            questions.forEach((q, idx) => {
+                const btn = document.createElement('button');
+                btn.className = `w-full text-left p-2.5 rounded-lg text-sm font-medium transition flex items-center justify-between ${idx === currentQuestionIndex ? 'bg-sky-100 dark:bg-sky-900/40 text-sky-700 dark:text-sky-300' : 'hover:bg-slate-100 dark:hover:bg-slate-700'}`;
+                btn.onclick = () => {
+                    currentQuestionIndex = idx;
+                    loadCurrentQuestionToEditor();
+                    renderQuestionsList();
+                };
+                btn.innerHTML = `
+                    <span class="truncate">${idx + 1}. ${q.text || 'Bez názvu'}</span>
+                    <span class="text-xs uppercase bg-slate-200 dark:bg-slate-600 px-1.5 py-0.5 rounded text-slate-600 dark:text-slate-300">${q.type}</span>
+                `;
+                container.appendChild(btn);
+            });
+        }
+
+        function addNewQuestion() {
+            questions.push({
+                id: Date.now(),
+                type: 'mc',
+                text: '',
+                options: ['Možnost 1', 'Možnost 2']
+            });
+            currentQuestionIndex = questions.length - 1;
+            loadCurrentQuestionToEditor();
+            renderQuestionsList();
+        }
+
+        function deleteCurrentQuestion() {
+            if (questions.length <= 1) return alert('Musí zůstat alespoň jedna otázka.');
+            questions.splice(currentQuestionIndex, 1);
+            currentQuestionIndex = Math.max(0, currentQuestionIndex - 1);
+            loadCurrentQuestionToEditor();
+            renderQuestionsList();
+        }
+
+        // PREZENTACE & ŽIVÝ NÁHLED
+        function startPresentation() {
+            document.getElementById('teacherView').classList.add('hidden');
+            document.getElementById('presentationView').classList.remove('hidden');
+            document.getElementById('presPin').innerText = currentSessionPin;
+            
+            updatePresentationView();
+            syncStateToFirebase();
+        }
+
+        function closePresentation() {
+            document.getElementById('presentationView').classList.add('hidden');
+            document.getElementById('teacherView').classList.remove('hidden');
+        }
+
+        function updatePresentationView() {
+            const q = questions[currentQuestionIndex];
+            document.getElementById('presQuestionTitle').innerText = q.text;
+            
+            const container = document.getElementById('presResultsContainer');
+            container.innerHTML = '';
+
+            if (q.type === 'mc') {
+                const wrapper = document.createElement('div');
+                wrapper.className = "w-full space-y-3 max-w-xl mx-auto";
+                (q.options || []).forEach(opt => {
+                    const count = activeAnswers[opt] || 0;
+                    wrapper.innerHTML += `
                         <div class="space-y-1">
-                            <div class="flex justify-between text-xs font-semibold">
-                                <span>${opt.value}</span>
-                                <span>0 hlasů (0%)</span>
+                            <div class="flex justify-between text-sm font-medium">
+                                <span>${opt}</span>
+                                <span>${count}</span>
                             </div>
-                            <div class="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-3 overflow-hidden">
-                                <div class="bg-indigo-600 h-3 rounded-full" style="width: 0%"></div>
+                            <div class="w-full bg-slate-200 dark:bg-slate-700 h-4 rounded-full overflow-hidden">
+                                <div class="bg-sky-600 h-full transition-all duration-500" style="width: ${count * 10}%"></div>
                             </div>
                         </div>
                     `;
+                });
+                container.appendChild(wrapper);
+            } else if (q.type === 'cloud') {
+                const wrapper = document.createElement('div');
+                wrapper.className = "flex flex-wrap justify-center items-center p-4";
+                Object.entries(activeAnswers).forEach(([word, count]) => {
+                    const size = Math.min(1 + count * 0.5, 3);
+                    wrapper.innerHTML += `<span class="word-cloud-item font-bold text-sky-600" style="font-size: ${size}rem">${word}</span>`;
+                });
+                container.appendChild(wrapper);
+            } else if (q.type === 'rating') {
+                const values = Object.values(activeAnswers);
+                const avg = values.length ? (values.reduce((a,b)=>a+b,0)/values.length).toFixed(1) : '0';
+                container.innerHTML = `
+                    <div class="text-center space-y-2">
+                        <div class="text-6xl font-extrabold text-amber-500">${avg} / 5</div>
+                        <p class="text-slate-500">Průměrné hodnocení (${values.length} odpovědí)</p>
+                    </div>
+                `;
+            } else {
+                const wrapper = document.createElement('div');
+                wrapper.className = "grid grid-cols-1 md:grid-cols-2 gap-3 w-full max-w-2xl";
+                Object.values(activeAnswers).forEach(ans => {
+                    wrapper.innerHTML += `<div class="p-3 bg-slate-100 dark:bg-slate-700 rounded-lg">${ans}</div>`;
+                });
+                container.appendChild(wrapper);
+            }
+        }
+
+        function nextPresQuestion() {
+            if (currentQuestionIndex < questions.length - 1) {
+                currentQuestionIndex++;
+                activeAnswers = {};
+                updatePresentationView();
+                syncStateToFirebase();
+            }
+        }
+
+        function prevPresQuestion() {
+            if (currentQuestionIndex > 0) {
+                currentQuestionIndex--;
+                activeAnswers = {};
+                updatePresentationView();
+                syncStateToFirebase();
+            }
+        }
+
+        // ŽÁKOVSKÁ LOGIKA
+        function joinSession() {
+            const pin = document.getElementById('joinPinInput').value.trim();
+            const name = document.getElementById('joinNameInput').value.trim();
+
+            if (!pin || !name) return alert('Zadejte PIN i jméno');
+
+            document.getElementById('studentJoinCard').classList.add('hidden');
+            document.getElementById('studentPollCard').classList.remove('hidden');
+            document.getElementById('studentRoomPin').innerText = `PIN: ${pin}`;
+
+            listenToFirebaseSession(pin);
+        }
+
+        function renderStudentQuestion(q) {
+            document.getElementById('studentWaiting').classList.add('hidden');
+            document.getElementById('studentActiveQuestion').classList.remove('hidden');
+            document.getElementById('studentQuestionTitle').innerText = q.text;
+
+            const area = document.getElementById('studentAnswerArea');
+            area.innerHTML = '';
+
+            if (q.type === 'mc') {
+                (q.options || []).forEach(opt => {
+                    area.innerHTML += `
+                        <label class="flex items-center space-x-3 p-3 border rounded-lg cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700">
+                            <input type="radio" name="studentAnswer" value="${opt}" class="w-4 h-4 text-sky-600">
+                            <span>${opt}</span>
+                        </label>
+                    `;
+                });
+            } else if (q.type === 'rating') {
+                area.innerHTML = `
+                    <div class="flex justify-between max-w-xs mx-auto">
+                        ${[1,2,3,4,5].map(n => `
+                            <label class="text-center cursor-pointer">
+                                <input type="radio" name="studentAnswer" value="${n}" class="sr-only peer">
+                                <div class="w-10 h-10 rounded-full border flex items-center justify-center peer-checked:bg-sky-600 peer-checked:text-white font-bold">${n}</div>
+                            </label>
+                        `).join('')}
+                    </div>
+                `;
+            } else {
+                area.innerHTML = `<input type="text" id="studentTextInput" placeholder="Vaše odpověď..." class="w-full p-3 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700">`;
+            }
+        }
+
+        function submitAnswer() {
+            let val = null;
+            const q = questions[currentQuestionIndex];
+
+            if (q.type === 'mc' || q.type === 'rating') {
+                const checked = document.querySelector('input[name="studentAnswer"]:checked');
+                if (checked) val = checked.value;
+            } else {
+                const inp = document.getElementById('studentTextInput');
+                if (inp) val = inp.value.trim();
+            }
+
+            if (!val) return alert('Vyberte nebo napište odpověď.');
+
+            // Odeslání do Firebase
+            if (window.db) {
+                const { doc, updateDoc, arrayUnion } = window.fbModules;
+                const pin = document.getElementById('joinPinInput').value.trim();
+                const sessionRef = doc(window.db, "sessions", pin);
+                updateDoc(sessionRef, {
+                    answers: arrayUnion({ questionId: q.id, answer: val })
+                });
+            }
+
+            alert('Odpověď byla odeslána!');
+        }
+
+        // FIREBASE SINCHRONIZACE
+        function syncStateToFirebase() {
+            if (!window.db) return;
+            const { doc, setDoc } = window.fbModules;
+            const sessionRef = doc(window.db, "sessions", currentSessionPin);
+            setDoc(sessionRef, {
+                currentQuestion: questions[currentQuestionIndex],
+                pin: currentSessionPin,
+                updatedAt: Date.now()
+            }, { merge: true });
+        }
+
+        function listenToFirebaseSession(pin) {
+            if (!window.db) return;
+            const { doc, onSnapshot } = window.fbModules;
+            onSnapshot(doc(window.db, "sessions", pin), (docSnap) => {
+                if (docSnap.exists()) {
+                    const data = docSnap.data();
+                    if (data.currentQuestion) {
+                        renderStudentQuestion(data.currentQuestion);
+                    }
                 }
             });
+        }
 
-            document.getElementById('btn-stop-session').classList.remove('hidden');
-        });
+        // AUTH MODAL LOGIKA
+        function openAuthModal() { document.getElementById('authModal').classList.remove('hidden'); }
+        function closeAuthModal() { document.getElementById('authModal').classList.add('hidden'); }
 
-        document.getElementById('btn-stop-session').addEventListener('click', () => {
-            document.getElementById('status-text').textContent = "Ukončeno";
-            document.getElementById('btn-stop-session').classList.add('hidden');
-        });
+        function loginWithGoogle() {
+            if (!window.auth) return;
+            const { signInWithPopup, GoogleAuthProvider } = window.fbModules;
+            signInWithPopup(window.auth, new GoogleAuthProvider())
+                .then(res => {
+                    closeAuthModal();
+                    updateAuthUI(res.user);
+                })
+                .catch(err => alert(err.message));
+        }
+
+        function loginEmail() {
+            const e = document.getElementById('authEmail').value;
+            const p = document.getElementById('authPassword').value;
+            const { signInWithEmailAndPassword } = window.fbModules;
+            signInWithEmailAndPassword(window.auth, e, p)
+                .then(res => { closeAuthModal(); updateAuthUI(res.user); })
+                .catch(err => alert(err.message));
+        }
+
+        function registerEmail() {
+            const e = document.getElementById('authEmail').value;
+            const p = document.getElementById('authPassword').value;
+            const { createUserWithEmailAndPassword } = window.fbModules;
+            createUserWithEmailAndPassword(window.auth, e, p)
+                .then(res => { closeAuthModal(); updateAuthUI(res.user); })
+                .catch(err => alert(err.message));
+        }
+
+        function updateAuthUI(user) {
+            const statusDiv = document.getElementById('authStatus');
+            if (user) {
+                statusDiv.innerHTML = `
+                    <span class="text-sm font-medium">${user.displayName || user.email}</span>
+                    <button onclick="logout()" class="px-2.5 py-1 bg-slate-200 dark:bg-slate-700 text-xs rounded hover:bg-slate-300">Odhlásit</button>
+                `;
+            } else {
+                statusDiv.innerHTML = `<button onclick="openAuthModal()" class="px-3 py-1.5 bg-sky-600 text-white rounded-lg text-sm font-medium hover:bg-sky-700 transition">Přihlásit se</button>`;
+            }
+        }
+
+        function logout() {
+            const { signOut } = window.fbModules;
+            signOut(window.auth).then(() => updateAuthUI(null));
+        }
     </script>
 </body>
 </html>
