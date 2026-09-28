@@ -1,0 +1,1658 @@
+<!DOCTYPE html>
+<html lang="cs" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EduPoll Live - Interaktivní prezentace & Cloudové rozhraní</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'media',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Plus Jakarta Sans', 'Inter', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+        
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            transition: background-color 0.3s ease, color 0.3s ease;
+        }
+
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(156, 163, 175, 0.3);
+            border-radius: 9999px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(156, 163, 175, 0.5);
+        }
+
+        .word-cloud-item {
+            transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), font-size 0.3s ease;
+        }
+
+        .chart-bar-fill {
+            transition: width 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .animate-fade-in {
+            animation: fadeIn 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(6px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body class="bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 h-full flex flex-col font-sans antialiased selection:bg-indigo-500 selection:text-white">
+
+    <!-- Toast Notification Container -->
+    <div id="toast-container" class="fixed top-4 right-4 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+    <div id="app" class="flex-1 flex flex-col h-full overflow-hidden">
+        
+        <!-- HEADER NAVBAR -->
+        <header class="bg-white/90 dark:bg-slate-900/90 backdrop-blur border-b border-slate-200/80 dark:border-slate-800/80 px-4 sm:px-6 py-3 flex items-center justify-between z-20 shrink-0 shadow-sm transition-colors">
+            <div class="flex items-center gap-3">
+                <div class="bg-indigo-600 text-white p-2.5 rounded-xl shadow-md shadow-indigo-600/20 flex items-center justify-center">
+                    <i data-lucide="presentation" class="w-5 h-5"></i>
+                </div>
+                <div>
+                    <div class="flex items-center gap-2">
+                        <h1 class="font-bold text-base text-slate-900 dark:text-white tracking-tight">
+                            EduPoll
+                        </h1>
+                        <span class="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200 dark:border-indigo-800 px-2 py-0.5 rounded-full uppercase tracking-wider">
+                            Live &amp; Cloud
+                        </span>
+                    </div>
+                    <p class="text-xs text-slate-500 dark:text-slate-400 hidden sm:block">Interaktivní výuka &amp; průzkumy v reálném čase</p>
+                </div>
+            </div>
+
+            <!-- Global Actions & Mode Switcher -->
+            <div class="flex items-center gap-2 sm:gap-3">
+                
+                <!-- My Presentations Button (for Teachers) -->
+                <button id="btn-my-presentations" onclick="openLibraryModal()" class="hidden sm:flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 dark:bg-indigo-950/80 hover:bg-indigo-100 dark:hover:bg-indigo-900/80 border border-indigo-200 dark:border-indigo-800 text-indigo-600 dark:text-indigo-400 rounded-xl text-xs font-bold transition-colors">
+                    <i data-lucide="folder-open" class="w-4 h-4"></i>
+                    <span>Moje prezentace</span>
+                </button>
+
+                <!-- Connected Counter -->
+                <div class="hidden lg:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-700 dark:text-slate-300">
+                    <i data-lucide="users" class="w-4 h-4 text-emerald-500"></i>
+                    <span>Připojeno: <strong id="header-connected-count" class="text-indigo-600 dark:text-indigo-400 font-mono">0</strong></span>
+                </div>
+
+                <!-- Help Button -->
+                <button onclick="openGuideModal()" class="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 border border-slate-200/80 dark:border-slate-700 text-xs font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1.5 transition-colors" title="Návod a nápověda">
+                    <i data-lucide="help-circle" class="w-4 h-4 text-indigo-500"></i>
+                    <span class="hidden md:inline">Návod</span>
+                </button>
+
+                <!-- User Account Button -->
+                <button onclick="openAuthModal()" id="btn-user-auth" class="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1.5 transition-colors">
+                    <i data-lucide="user" class="w-4 h-4 text-indigo-500"></i>
+                    <span id="user-auth-label">Účet</span>
+                </button>
+
+                <div id="header-nav" class="flex items-center p-1 bg-slate-100 dark:bg-slate-800/80 rounded-xl border border-slate-200/60 dark:border-slate-700/50">
+                    <button onclick="switchRole('teacher')" id="btn-role-teacher" class="px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-2 transition-all">
+                        <i data-lucide="screen-share" class="w-4 h-4"></i>
+                        <span>Učitel</span>
+                    </button>
+                    <button onclick="switchRole('student')" id="btn-role-student" class="px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-2 transition-all">
+                        <i data-lucide="smartphone" class="w-4 h-4"></i>
+                        <span>Žák</span>
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <main class="flex-1 overflow-hidden relative flex bg-slate-50 dark:bg-slate-950">
+
+            <!-- TEACHER VIEW -->
+            <div id="view-teacher" class="w-full h-full flex flex-col md:flex-row overflow-hidden">
+                
+                <!-- SIDEBAR -->
+                <aside class="w-full md:w-80 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 flex flex-col shrink-0 z-10">
+                    
+                    <!-- Session PIN & Active Presentation Card -->
+                    <div class="p-4 border-b border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 space-y-3">
+                        
+                        <div class="flex items-center justify-between">
+                            <span class="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">PIN Místnosti</span>
+                            <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-medium bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/60">
+                                <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                                Živě
+                            </span>
+                        </div>
+
+                        <div class="flex items-center justify-between bg-white dark:bg-slate-950 p-3 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
+                            <div class="text-3xl font-extrabold tracking-wider text-indigo-600 dark:text-indigo-400 font-mono" id="teacher-pin-display">8842</div>
+                            <div class="flex gap-1">
+                                <button onclick="openQrModal()" class="p-2 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-xl transition-colors" title="Zobrazit QR Kód">
+                                    <i data-lucide="qr-code" class="w-4 h-4"></i>
+                                </button>
+                                <button onclick="copyStudentLink()" class="p-2 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-xl transition-colors" title="Kopírovat Odkaz">
+                                    <i data-lucide="copy" class="w-4 h-4"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Current Presentation Info & Save Button -->
+                        <div class="flex items-center justify-between pt-1">
+                            <div class="min-w-0 flex-1 pr-2">
+                                <span class="text-[10px] font-bold uppercase text-slate-400 block">Prezentace:</span>
+                                <h4 id="active-presentation-title" class="text-xs font-bold text-slate-800 dark:text-slate-200 truncate">Moje interaktivní hodina</h4>
+                            </div>
+                            <button onclick="saveCurrentPresentation()" class="px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-[11px] font-bold flex items-center gap-1 transition-all shadow-sm shrink-0" title="Uložit do cloudu">
+                                <i data-lucide="save" class="w-3.5 h-3.5"></i> Uložit
+                            </button>
+                        </div>
+
+                        <!-- Mode Switcher: Prezentace vs Průzkum -->
+                        <div class="pt-2 border-t border-slate-200/60 dark:border-slate-800">
+                            <label class="block text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-1.5">Režim Průchodu Otázek</label>
+                            <div class="grid grid-cols-2 gap-1.5 p-1 bg-slate-100 dark:bg-slate-950 rounded-xl border border-slate-200/80 dark:border-slate-800">
+                                <button onclick="setPacingMode('teacher')" id="btn-pace-teacher" class="py-1.5 px-2 rounded-lg text-[11px] font-bold flex items-center justify-center gap-1.5 transition-all">
+                                    <i data-lucide="presentation" class="w-3.5 h-3.5"></i>
+                                    <span>Prezentace</span>
+                                </button>
+                                <button onclick="setPacingMode('survey')" id="btn-pace-survey" class="py-1.5 px-2 rounded-lg text-[11px] font-bold flex items-center justify-center gap-1.5 transition-all">
+                                    <i data-lucide="file-text" class="w-3.5 h-3.5"></i>
+                                    <span>Průzkum</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Slide List Header & Items -->
+                    <div class="p-3 pb-1 flex items-center justify-between text-xs font-bold text-slate-400 uppercase tracking-wider">
+                        <span>Otázky v prezentaci</span>
+                        <span id="slide-count-badge" class="font-mono text-indigo-600 dark:text-indigo-400">1</span>
+                    </div>
+                    <div class="flex-1 overflow-y-auto p-3 space-y-2" id="teacher-slide-list">
+                        <!-- Dynamic Slide items -->
+                    </div>
+
+                    <!-- Sidebar Footer Controls -->
+                    <div class="p-4 border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 space-y-2">
+                        <button onclick="openAddSlideModal()" class="w-full py-2.5 px-4 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-xl text-xs flex items-center justify-center gap-2 shadow-sm transition-all">
+                            <i data-lucide="plus-circle" class="w-4 h-4"></i>
+                            Přidat novou otázku
+                        </button>
+                        <div class="grid grid-cols-2 gap-2 pt-1">
+                            <button onclick="resetCurrentSlideResults()" class="py-2 px-3 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-medium rounded-xl text-xs flex items-center justify-center gap-1.5 transition-colors">
+                                <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i> Reset
+                            </button>
+                            <button onclick="exportResults()" class="py-2 px-3 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-medium rounded-xl text-xs flex items-center justify-center gap-1.5 transition-colors">
+                                <i data-lucide="download" class="w-3.5 h-3.5"></i> Export
+                            </button>
+                        </div>
+                    </div>
+                </aside>
+
+                <!-- MAIN PRESENTATION CANVAS -->
+                <section class="flex-1 flex flex-col h-full bg-slate-50 dark:bg-slate-950 overflow-hidden relative">
+                    
+                    <!-- Slide Header / Controls -->
+                    <div class="px-6 py-4 bg-white/60 dark:bg-slate-900/40 border-b border-slate-200/80 dark:border-slate-800/60 flex items-center justify-between gap-4">
+                        <div class="flex items-center gap-3 min-w-0">
+                            <span id="slide-type-badge" class="px-2.5 py-1 rounded-lg text-[11px] font-bold uppercase tracking-wider bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800 shrink-0">
+                                Typ
+                            </span>
+                            <h2 id="teacher-slide-title" class="text-base sm:text-lg font-bold text-slate-900 dark:text-white truncate">
+                                Název otázky
+                            </h2>
+                        </div>
+
+                        <!-- Top Toolbar Controls -->
+                        <div class="flex items-center gap-2 shrink-0">
+                            <button onclick="openQrModal()" class="p-2 sm:px-3 sm:py-2 bg-indigo-50 dark:bg-indigo-950/60 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 border border-indigo-200 dark:border-indigo-800 text-indigo-600 dark:text-indigo-400 rounded-xl transition-colors flex items-center gap-2 text-xs font-semibold shadow-sm">
+                                <i data-lucide="qr-code" class="w-4 h-4"></i>
+                                <span class="hidden sm:inline">QR Kód &amp; Instrukce</span>
+                            </button>
+                            <button onclick="toggleResultsVisibility()" id="btn-toggle-results" class="p-2 sm:px-3 sm:py-2 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 rounded-xl transition-colors flex items-center gap-2 text-xs font-medium shadow-sm">
+                                <i data-lucide="eye" class="w-4 h-4"></i>
+                                <span class="hidden sm:inline" id="btn-toggle-results-text">Skrýt výsledky</span>
+                            </button>
+                            <button onclick="toggleFullscreen()" class="p-2 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 rounded-xl transition-colors shadow-sm" title="Celá obrazovka">
+                                <i data-lucide="maximize" class="w-4 h-4"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Slide Display Canvas Area -->
+                    <div class="flex-1 p-6 sm:p-10 overflow-y-auto flex flex-col justify-center items-center relative" id="teacher-canvas-container">
+                        <!-- Dynamic Slide Content -->
+                    </div>
+
+                    <!-- BOTTOM CONTROLS & NAV BAR -->
+                    <div class="px-6 py-3.5 bg-white/80 dark:bg-slate-900/80 border-t border-slate-200/80 dark:border-slate-800/80 flex items-center justify-between">
+                        <div class="flex items-center gap-4 text-slate-500 dark:text-slate-400 text-xs sm:text-sm font-medium">
+                            <div class="flex items-center gap-1.5">
+                                <i data-lucide="users" class="w-4 h-4 text-emerald-500"></i>
+                                <span>Připojeno: <strong id="teacher-live-participants" class="text-slate-900 dark:text-white font-bold font-mono">0</strong></span>
+                            </div>
+                            <span class="text-slate-300 dark:text-slate-700">|</span>
+                            <div class="flex items-center gap-1.5">
+                                <i data-lucide="message-square" class="w-4 h-4 text-indigo-600 dark:text-indigo-400"></i>
+                                <span>Odpovědí: <strong id="teacher-total-responses" class="text-slate-900 dark:text-white font-bold font-mono">0</strong></span>
+                            </div>
+                        </div>
+
+                        <!-- Navigation Arrows -->
+                        <div class="flex items-center gap-3">
+                            <button onclick="prevSlide()" class="p-2 sm:p-2.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:white rounded-xl disabled:opacity-30 disabled:cursor-not-allowed transition-all" id="btn-prev-slide">
+                                <i data-lucide="chevron-left" class="w-5 h-5"></i>
+                            </button>
+                            <span class="text-xs sm:text-sm font-semibold text-slate-600 dark:text-slate-300 font-mono" id="teacher-slide-counter">1 / 1</span>
+                            <button onclick="nextSlide()" class="p-2 sm:p-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl disabled:opacity-30 disabled:cursor-not-allowed shadow-sm transition-all" id="btn-next-slide">
+                                <i data-lucide="chevron-right" class="w-5 h-5"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                </section>
+            </div>
+
+            <!-- STUDENT VIEW -->
+            <div id="view-student" class="w-full h-full flex flex-col items-center justify-center p-4 overflow-y-auto bg-slate-50 dark:bg-slate-950 hidden">
+                
+                <!-- Student Login Card -->
+                <div id="student-login-card" class="w-full max-w-md bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 sm:p-8 rounded-3xl shadow-xl dark:shadow-2xl animate-fade-in my-auto">
+                    <div class="text-center mb-6">
+                        <div class="w-12 h-12 bg-indigo-50 dark:bg-indigo-950/80 border border-indigo-100 dark:border-indigo-800 text-indigo-600 dark:text-indigo-400 rounded-2xl flex items-center justify-center mx-auto mb-3 shadow-sm">
+                            <i data-lucide="smartphone" class="w-6 h-6"></i>
+                        </div>
+                        <h2 class="text-xl font-extrabold text-slate-900 dark:text-white">Připojit se k výuce</h2>
+                        <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">Zadejte 4místný PIN kód zobrazený učitelem na tabuli</p>
+                    </div>
+
+                    <!-- INSTRUKCE PRO ŽÁKY -->
+                    <div class="bg-indigo-50/70 dark:bg-indigo-950/40 border border-indigo-100 dark:border-indigo-900/60 rounded-2xl p-4 mb-5 space-y-2">
+                        <div class="font-bold text-xs text-indigo-900 dark:text-indigo-200 flex items-center gap-1.5">
+                            <i data-lucide="info" class="w-4 h-4 text-indigo-600 dark:text-indigo-400 shrink-0"></i>
+                            <span>Jak se připojit k hlasování:</span>
+                        </div>
+                        <ul class="space-y-1.5 text-[11px] text-slate-600 dark:text-slate-300">
+                            <li class="flex items-start gap-2">
+                                <span class="w-4 h-4 rounded-full bg-indigo-200 dark:bg-indigo-900 text-indigo-800 dark:text-indigo-300 font-bold text-[10px] flex items-center justify-center shrink-0 mt-0.5">1</span>
+                                <span><strong>Naskenujte QR kód</strong> z prezentace učitele, nebo zadejte **PIN kód** níže.</span>
+                            </li>
+                            <li class="flex items-start gap-2">
+                                <span class="w-4 h-4 rounded-full bg-indigo-200 dark:bg-indigo-900 text-indigo-800 dark:text-indigo-300 font-bold text-[10px] flex items-center justify-center shrink-0 mt-0.5">2</span>
+                                <span>Zadejte svoje **jméno nebo přezdívku** (můžete zůstat i v anonymitě).</span>
+                            </li>
+                            <li class="flex items-start gap-2">
+                                <span class="w-4 h-4 rounded-full bg-indigo-200 dark:bg-indigo-900 text-indigo-800 dark:text-indigo-300 font-bold text-[10px] flex items-center justify-center shrink-0 mt-0.5">3</span>
+                                <span>Klikněte na <strong>Vstoupit do hlasování</strong> a odpovídejte na zobrazené otázky.</span>
+                            </li>
+                        </ul>
+                    </div>
+
+                    <form onsubmit="joinStudentSession(event)" class="space-y-4">
+                        <div>
+                            <label class="block text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1.5">PIN Kód prezentace</label>
+                            <input type="number" id="input-student-pin" required placeholder="Např. 8842" class="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 focus:border-indigo-600 dark:focus:border-indigo-500 text-slate-900 dark:text-white rounded-xl px-4 py-3 text-center text-2xl font-mono tracking-widest font-bold placeholder-slate-400 dark:placeholder-slate-600 outline-none transition-all">
+                        </div>
+                        <div>
+                            <label class="block text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1.5">Tvoje Jméno / Přezdívka (volitelné)</label>
+                            <input type="text" id="input-student-name" placeholder="Anonymní žák" class="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 focus:border-indigo-600 dark:focus:border-indigo-500 text-slate-900 dark:text-white rounded-xl px-4 py-2.5 text-center text-xs placeholder-slate-400 dark:placeholder-slate-600 outline-none transition-all">
+                        </div>
+                        <button type="submit" class="w-full py-3.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl text-xs sm:text-sm shadow-md shadow-indigo-600/20 transition-all flex items-center justify-center gap-2">
+                            <span>Vstoupit do hlasování</span>
+                            <i data-lucide="arrow-right" class="w-4 h-4"></i>
+                        </button>
+                    </form>
+
+                    <!-- Nápověda při potížích -->
+                    <div class="mt-5 pt-4 border-t border-slate-100 dark:border-slate-800/80 text-center">
+                        <p class="text-[11px] text-slate-400 dark:text-slate-500">
+                            Nedaří se vám připojit? Zkontrolujte, zda máte správný PIN z tabule nebo požádejte učitele o QR kód.
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Student Active Interactive Panel -->
+                <div id="student-active-card" class="w-full max-w-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 sm:p-8 rounded-3xl shadow-xl dark:shadow-2xl flex flex-col hidden animate-fade-in my-auto">
+                    
+                    <div class="flex items-center justify-between border-b border-slate-100 dark:border-slate-800/80 pb-4 mb-4">
+                        <div class="flex items-center gap-2">
+                            <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                            <span class="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">PIN: <strong class="text-indigo-600 dark:text-indigo-400 font-mono text-sm" id="student-connected-pin">----</strong></span>
+                        </div>
+                        <span id="student-pace-badge" class="px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
+                            Prezentace
+                        </span>
+                        <button onclick="leaveStudentSession()" class="text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 underline transition-colors">
+                            Odpojit se
+                        </button>
+                    </div>
+
+                    <!-- Krátká vizuální nápověda pro aktivního žáka -->
+                    <div class="p-2.5 bg-slate-50 dark:bg-slate-950 rounded-xl border border-slate-200/60 dark:border-slate-800 mb-4 flex items-center gap-2 text-[11px] text-slate-500 dark:text-slate-400">
+                        <i data-lucide="shield-check" class="w-4 h-4 text-emerald-500 shrink-0"></i>
+                        <span>Jste úspěšně připojeni. Vaše odpovídání je zaznamenáváno v reálném čase.</span>
+                    </div>
+
+                    <div id="student-slide-container" class="space-y-6">
+                        <!-- Dynamic Student Input UI -->
+                    </div>
+
+                </div>
+
+            </div>
+
+        </main>
+    </div>
+
+    <!-- MODAL: MY PRESENTATIONS LIBRARY -->
+    <div id="modal-library" class="fixed inset-0 bg-slate-900/60 dark:bg-slate-950/80 backdrop-blur-md z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl w-full max-w-2xl p-6 sm:p-8 shadow-2xl relative animate-fade-in max-h-[85vh] flex flex-col">
+            <button onclick="closeLibraryModal()" class="absolute top-5 right-5 text-slate-400 hover:text-slate-700 dark:hover:text-white p-2 rounded-xl bg-slate-100 dark:bg-slate-800 transition-colors">
+                <i data-lucide="x" class="w-4 h-4"></i>
+            </button>
+
+            <div class="flex items-center gap-3 mb-6 shrink-0">
+                <div class="p-3 bg-indigo-50 dark:bg-indigo-950/80 border border-indigo-100 dark:border-indigo-800 text-indigo-600 dark:text-indigo-400 rounded-2xl">
+                    <i data-lucide="folder" class="w-6 h-6"></i>
+                </div>
+                <div>
+                    <h3 class="text-xl font-extrabold text-slate-900 dark:text-white">Moje uložené prezentace</h3>
+                    <p class="text-xs text-slate-500 dark:text-slate-400">Připravte si hodiny předem a vracejte se k nim kdykoliv</p>
+                </div>
+            </div>
+
+            <!-- Library Content List -->
+            <div id="library-list-container" class="overflow-y-auto pr-1 space-y-3 flex-1 min-h-[200px]">
+                <!-- Loaded via JS -->
+            </div>
+
+            <div class="pt-4 border-t border-slate-200 dark:border-slate-800 flex justify-between items-center shrink-0">
+                <button onclick="createNewBlankPresentation()" class="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl text-xs flex items-center gap-2 transition-all shadow-sm">
+                    <i data-lucide="plus" class="w-4 h-4"></i>
+                    <span>Vytvořit novou prezentaci</span>
+                </button>
+                <button onclick="closeLibraryModal()" class="px-4 py-2 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-semibold rounded-xl text-xs">Zavřít</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: QR CODE & INSTRUCTIONS -->
+    <div id="modal-qr-code" class="fixed inset-0 bg-slate-900/60 dark:bg-slate-950/80 backdrop-blur-md z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl w-full max-w-md p-6 sm:p-8 shadow-2xl relative text-center animate-fade-in">
+            <button onclick="closeQrModal()" class="absolute top-5 right-5 text-slate-400 hover:text-slate-700 dark:hover:text-white p-2 rounded-xl bg-slate-100 dark:bg-slate-800 transition-colors">
+                <i data-lucide="x" class="w-4 h-4"></i>
+            </button>
+
+            <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-indigo-50 dark:bg-indigo-950/80 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800 mb-4">
+                <i data-lucide="qr-code" class="w-3.5 h-3.5"></i> Instrukce k připojení
+            </span>
+
+            <h3 class="text-xl font-extrabold text-slate-900 dark:text-white mb-1">Naskenujte QR Kód</h3>
+            <p class="text-xs text-slate-500 dark:text-slate-400 mb-6">Naměřte fotoaparát telefonu pro přímé připojení bez psaní PINu</p>
+
+            <div class="bg-white p-4 rounded-2xl border-2 border-slate-100 dark:border-slate-800 shadow-inner w-56 h-56 mx-auto flex items-center justify-center mb-6">
+                <img id="qr-code-img" src="" alt="QR Kód pro připojení" class="w-full h-full object-contain rounded-lg">
+            </div>
+
+            <div class="bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 p-4 rounded-2xl mb-6 space-y-2">
+                <div class="text-xs text-slate-500 dark:text-slate-400 font-medium">Adresa k připojení:</div>
+                <div class="text-xs sm:text-sm font-bold text-slate-800 dark:text-slate-200 font-mono break-all" id="join-url-text">http://edupoll.live</div>
+                <div class="pt-2 border-t border-slate-200/60 dark:border-slate-800 flex items-center justify-between px-2">
+                    <span class="text-xs text-slate-500 dark:text-slate-400">PIN Kód:</span>
+                    <span class="text-2xl font-black text-indigo-600 dark:text-indigo-400 font-mono tracking-wider" id="modal-pin-display">8842</span>
+                </div>
+            </div>
+
+            <div class="flex items-center justify-center gap-2 p-3 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/60 rounded-xl text-emerald-700 dark:text-emerald-300 text-xs font-bold">
+                <i data-lucide="users" class="w-4 h-4 animate-bounce"></i>
+                <span>Připojeno účastníků: <strong id="modal-connected-count" class="text-emerald-900 dark:text-emerald-100 text-sm font-mono">0</strong></span>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: ADD SLIDE -->
+    <div id="modal-add-slide" class="fixed inset-0 bg-slate-900/40 dark:bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl w-full max-w-lg p-6 sm:p-8 shadow-2xl relative animate-fade-in max-h-[90vh] overflow-y-auto">
+            <button onclick="closeAddSlideModal()" class="absolute top-5 right-5 text-slate-400 hover:text-slate-700 dark:hover:text-white p-2 rounded-xl bg-slate-100 dark:bg-slate-800 transition-colors">
+                <i data-lucide="x" class="w-4 h-4"></i>
+            </button>
+
+            <h3 class="text-lg font-bold text-slate-900 dark:text-white mb-1">Vytvořit novou otázku</h3>
+            <p class="text-xs text-slate-500 dark:text-slate-400 mb-6">Vyberte typ snímku, zadejte jeho znění a případně přiložte obrázek</p>
+
+            <form onsubmit="handleAddSlideSubmit(event)" class="space-y-4">
+                <div>
+                    <label class="block text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">Typ Otázky</label>
+                    <div class="grid grid-cols-2 gap-2" id="modal-type-selector">
+                        <button type="button" onclick="selectModalType('choice')" id="type-btn-choice" class="p-3 bg-slate-50 dark:bg-slate-800/80 border-2 border-indigo-600 dark:border-indigo-500 rounded-2xl text-left text-xs font-medium transition-all">
+                            <i data-lucide="bar-chart-2" class="w-5 h-5 text-indigo-600 dark:text-indigo-400 mb-1"></i>
+                            <div class="font-bold text-slate-900 dark:text-white">Multiple Choice</div>
+                            <div class="text-slate-500 dark:text-slate-400 text-[10px]">Výběr z možností</div>
+                        </button>
+                        <button type="button" onclick="selectModalType('wordcloud')" id="type-btn-wordcloud" class="p-3 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-2xl text-left text-xs font-medium hover:border-indigo-500 transition-all">
+                            <i data-lucide="cloud" class="w-5 h-5 text-indigo-600 dark:text-indigo-400 mb-1"></i>
+                            <div class="font-bold text-slate-900 dark:text-white">Word Cloud</div>
+                            <div class="text-slate-500 dark:text-slate-400 text-[10px]">Slovní mrak</div>
+                        </button>
+                        <button type="button" onclick="selectModalType('open')" id="type-btn-open" class="p-3 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-2xl text-left text-xs font-medium hover:border-indigo-500 transition-all">
+                            <i data-lucide="message-square" class="w-5 h-5 text-indigo-600 dark:text-indigo-400 mb-1"></i>
+                            <div class="font-bold text-slate-900 dark:text-white">Open Ended</div>
+                            <div class="text-slate-500 dark:text-slate-400 text-[10px]">Volné texty / Q&amp;A</div>
+                        </button>
+                        <button type="button" onclick="selectModalType('rating')" id="type-btn-rating" class="p-3 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-2xl text-left text-xs font-medium hover:border-indigo-500 transition-all">
+                            <i data-lucide="star" class="w-5 h-5 text-indigo-600 dark:text-indigo-400 mb-1"></i>
+                            <div class="font-bold text-slate-900 dark:text-white">Rating / Škály</div>
+                            <div class="text-slate-500 dark:text-slate-400 text-[10px]">Hodnocení 1-5</div>
+                        </button>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1.5">Otázka / Nadpis</label>
+                    <input type="text" id="modal-input-question" required placeholder="Např. Jaký předmět znázorňuje tento diagram?" class="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 focus:border-indigo-600 dark:focus:border-indigo-500 text-slate-900 dark:text-white rounded-xl px-4 py-2.5 text-sm outline-none">
+                </div>
+
+                <!-- IMAGE UPLOAD OPTION -->
+                <div>
+                    <label class="block text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1.5">Obrázek k zadání (volitelné)</label>
+                    <div class="flex items-center gap-2">
+                        <input type="file" id="modal-input-image" accept="image/*" onchange="handleImageUpload(event)" class="hidden">
+                        <button type="button" onclick="document.getElementById('modal-input-image').click()" class="px-3.5 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-semibold rounded-xl text-xs flex items-center gap-2 transition-colors border border-slate-200 dark:border-slate-700">
+                            <i data-lucide="image" class="w-4 h-4 text-indigo-500"></i>
+                            <span id="modal-image-btn-label">Nahrát obrázek...</span>
+                        </button>
+                        <button type="button" id="modal-remove-image-btn" onclick="removeModalImage()" class="hidden p-2 bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 rounded-xl hover:bg-rose-100 transition-colors border border-rose-200 dark:border-rose-800/50" title="Odstranit obrázek">
+                            <i data-lucide="trash-2" class="w-4 h-4"></i>
+                        </button>
+                    </div>
+                    <div id="modal-image-preview-container" class="mt-3 hidden">
+                        <img id="modal-image-preview" src="" alt="Náhled obrázku" class="max-h-36 rounded-xl border border-slate-200 dark:border-slate-700 object-contain shadow-sm bg-slate-100 dark:bg-slate-950 p-1">
+                    </div>
+                </div>
+
+                <div id="modal-options-container" class="space-y-2">
+                    <div class="flex items-center justify-between mb-1">
+                        <label class="block text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Možnosti odpovědí</label>
+                        <button type="button" onclick="addModalOptionInput()" class="text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 flex items-center gap-1 px-2 py-1 rounded-lg hover:bg-indigo-50 dark:hover:bg-indigo-950/50 transition-colors">
+                            <i data-lucide="plus-circle" class="w-3.5 h-3.5"></i>
+                            <span>Přidat možnost</span>
+                        </button>
+                    </div>
+                    <div id="modal-options-list" class="space-y-2">
+                        <div class="flex items-center gap-2 option-row">
+                            <input type="text" class="modal-option-input w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white rounded-xl px-4 py-2 text-sm outline-none focus:border-indigo-600 dark:focus:border-indigo-500 transition-all" placeholder="Možnost 1" value="Ano">
+                            <button type="button" onclick="removeModalOptionInput(this)" class="p-2 text-slate-400 hover:text-rose-500 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" title="Odstranit možnost">
+                                <i data-lucide="trash-2" class="w-4 h-4"></i>
+                            </button>
+                        </div>
+                        <div class="flex items-center gap-2 option-row">
+                            <input type="text" class="modal-option-input w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white rounded-xl px-4 py-2 text-sm outline-none focus:border-indigo-600 dark:focus:border-indigo-500 transition-all" placeholder="Možnost 2" value="Ne">
+                            <button type="button" onclick="removeModalOptionInput(this)" class="p-2 text-slate-400 hover:text-rose-500 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" title="Odstranit možnost">
+                                <i data-lucide="trash-2" class="w-4 h-4"></i>
+                            </button>
+                        </div>
+                        <div class="flex items-center gap-2 option-row">
+                            <input type="text" class="modal-option-input w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white rounded-xl px-4 py-2 text-sm outline-none focus:border-indigo-600 dark:focus:border-indigo-500 transition-all" placeholder="Možnost 3" value="Nevím">
+                            <button type="button" onclick="removeModalOptionInput(this)" class="p-2 text-slate-400 hover:text-rose-500 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" title="Odstranit možnost">
+                                <i data-lucide="trash-2" class="w-4 h-4"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex justify-end gap-2.5 pt-4">
+                    <button type="button" onclick="closeAddSlideModal()" class="px-4 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-semibold rounded-xl text-xs transition-colors">Storno</button>
+                    <button type="submit" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-xl text-xs shadow-sm transition-all">Uložit otázku</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL: LOGIN / AUTH -->
+    <div id="modal-auth" class="fixed inset-0 bg-slate-900/60 dark:bg-slate-950/80 backdrop-blur-md z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl w-full max-w-md p-6 sm:p-8 shadow-2xl relative animate-fade-in">
+            <button onclick="closeAuthModal()" class="absolute top-5 right-5 text-slate-400 hover:text-slate-700 dark:hover:text-white p-2 rounded-xl bg-slate-100 dark:bg-slate-800 transition-colors">
+                <i data-lucide="x" class="w-4 h-4"></i>
+            </button>
+
+            <div id="auth-unauth-view">
+                <div class="text-center mb-6">
+                    <div class="w-12 h-12 bg-indigo-50 dark:bg-indigo-950/80 border border-indigo-100 dark:border-indigo-800 text-indigo-600 dark:text-indigo-400 rounded-2xl flex items-center justify-center mx-auto mb-3 shadow-sm">
+                        <i data-lucide="user" class="w-6 h-6"></i>
+                    </div>
+                    <h3 class="text-xl font-extrabold text-slate-900 dark:text-white">Učitelský profil</h3>
+                    <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">Zadejte svůj e-mail pro propojení s cloudem</p>
+                </div>
+
+                <form onsubmit="handleAuthSubmit(event)" class="space-y-4">
+                    <div>
+                        <label class="block text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1.5">E-mailová adresa</label>
+                        <input type="email" id="auth-email" required placeholder="ucitel@skola.cz" class="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 focus:border-indigo-600 dark:focus:border-indigo-500 text-slate-900 dark:text-white rounded-xl px-4 py-2.5 text-xs outline-none">
+                    </div>
+                    <button type="submit" class="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl text-xs shadow-md shadow-indigo-600/20 transition-all flex items-center justify-center gap-2">
+                        <i data-lucide="check" class="w-4 h-4"></i>
+                        <span>Uložit profil</span>
+                    </button>
+                </form>
+            </div>
+
+            <div id="auth-profile-view" class="hidden text-center space-y-4">
+                <div class="w-16 h-16 bg-indigo-100 dark:bg-indigo-900/60 text-indigo-600 dark:text-indigo-300 rounded-full flex items-center justify-center mx-auto text-xl font-bold font-mono">
+                    <span id="user-avatar-text">UČ</span>
+                </div>
+                <div>
+                    <h3 class="text-lg font-bold text-slate-900 dark:text-white" id="user-profile-email">ucitel@skola.cz</h3>
+                    <p class="text-xs text-emerald-600 dark:text-emerald-400 font-semibold flex items-center justify-center gap-1 mt-1">
+                        <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+                        Přihlášený profil v cloudu
+                    </p>
+                </div>
+                <div class="pt-4 border-t border-slate-100 dark:border-slate-800">
+                    <button onclick="handleLogout()" class="w-full py-2.5 bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 dark:hover:bg-rose-900/50 text-rose-600 dark:text-rose-400 font-bold rounded-xl text-xs border border-rose-200 dark:border-rose-800 transition-colors flex items-center justify-center gap-2">
+                        <i data-lucide="log-out" class="w-4 h-4"></i>
+                        <span>Odhlásit profil</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: USER GUIDE -->
+    <div id="modal-guide" class="fixed inset-0 bg-slate-900/60 dark:bg-slate-950/80 backdrop-blur-md z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl w-full max-w-2xl p-6 sm:p-8 shadow-2xl relative animate-fade-in max-h-[90vh] flex flex-col">
+            <button onclick="closeGuideModal()" class="absolute top-5 right-5 text-slate-400 hover:text-slate-700 dark:hover:text-white p-2 rounded-xl bg-slate-100 dark:bg-slate-800 transition-colors">
+                <i data-lucide="x" class="w-4 h-4"></i>
+            </button>
+
+            <div class="flex items-center gap-3 mb-6 shrink-0">
+                <div class="p-3 bg-indigo-50 dark:bg-indigo-950/80 border border-indigo-100 dark:border-indigo-800 text-indigo-600 dark:text-indigo-400 rounded-2xl">
+                    <i data-lucide="book-open" class="w-6 h-6"></i>
+                </div>
+                <div>
+                    <h3 class="text-xl font-extrabold text-slate-900 dark:text-white">Jak funguje EduPoll Live &amp; Cloud</h3>
+                    <p class="text-xs text-slate-500 dark:text-slate-400">Příprava prezentací předem a živá výuka na mobilních zařízeních</p>
+                </div>
+            </div>
+
+            <div class="overflow-y-auto pr-2 space-y-4 flex-1 text-xs sm:text-sm text-slate-600 dark:text-slate-300">
+                <div class="flex gap-4 items-start p-4 bg-slate-50 dark:bg-slate-950 rounded-2xl border border-slate-200/80 dark:border-slate-800">
+                    <div class="w-8 h-8 rounded-xl bg-indigo-600 text-white font-extrabold flex items-center justify-center shrink-0">1</div>
+                    <div class="space-y-1">
+                        <h4 class="font-bold text-slate-900 dark:text-white text-sm">Příprava prezentací v cloudu</h4>
+                        <p class="leading-relaxed">V sekci <strong>"Moje prezentace"</strong> můžete kdykoliv vytvářet a ukládat nové sady otázek. Ke každé otázce lze nahrát i obrázek či schéma.</p>
+                    </div>
+                </div>
+
+                <div class="flex gap-4 items-start p-4 bg-slate-50 dark:bg-slate-950 rounded-2xl border border-slate-200/80 dark:border-slate-800">
+                    <div class="w-8 h-8 rounded-xl bg-indigo-600 text-white font-extrabold flex items-center justify-center shrink-0">2</div>
+                    <div class="space-y-1">
+                        <h4 class="font-bold text-slate-900 dark:text-white text-sm">Spuštění výuky &amp; Připojení Žáků</h4>
+                        <p class="leading-relaxed">Kliknutím na <strong>"Spustit výuku"</strong> se aktivuje živá místnost. Žáci naskenují QR kód fotoaparátem svého mobilu a ihned hlasují z jakéhokoliv připojení k internetu.</p>
+                    </div>
+                </div>
+
+                <div class="flex gap-4 items-start p-4 bg-slate-50 dark:bg-slate-950 rounded-2xl border border-slate-200/80 dark:border-slate-800">
+                    <div class="w-8 h-8 rounded-xl bg-indigo-600 text-white font-extrabold flex items-center justify-center shrink-0">3</div>
+                    <div class="space-y-1">
+                        <h4 class="font-bold text-slate-900 dark:text-white text-sm">Průběh Hodiny &amp; Režimy</h4>
+                        <p class="leading-relaxed">Lze zvolit <strong>Prezentaci</strong> (vy měníte otázky všem synchronně) nebo <strong>Průzkum</strong> (žáci vyplňují dotazník na svém mobilu samostatně).</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="pt-4 border-t border-slate-200 dark:border-slate-800 flex justify-end shrink-0">
+                <button onclick="closeGuideModal()" class="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl text-xs transition-all shadow-sm">Rozumím</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- FIREBASE MODULE & CLIENT SCRIPT -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, getDoc, setDoc, updateDoc, onSnapshot, collection, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // APP PARAMS & FALLBACKS
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'edupoll-live-default';
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {
+            apiKey: "demo-api-key",
+            authDomain: "demo-project.firebaseapp.com",
+            projectId: "demo-project",
+            storageBucket: "demo-project.appspot.com",
+            messagingSenderId: "123456789",
+            appId: "1:123456789:web:123456"
+        };
+
+        // Initialize Firebase
+        let app, db, auth;
+        let currentUser = null;
+        let unsubscribeRoomListener = null;
+
+        try {
+            app = initializeApp(firebaseConfig);
+            db = getFirestore(app);
+            auth = getAuth(app);
+        } catch(err) {
+            console.warn("Firebase config is in fallback/demo mode:", err);
+        }
+
+        // Global Application State
+        window.state = {
+            role: 'teacher',
+            pin: Math.floor(1000 + Math.random() * 9000).toString(),
+            activePresentationId: 'pres_' + Date.now(),
+            activePresentationTitle: 'Moje interaktivní hodina',
+            pacingMode: 'teacher', // 'teacher' vs 'survey'
+            currentSlideIndex: 0,
+            slides: [
+                {
+                    id: 'slide-1',
+                    type: 'choice',
+                    title: 'Jak často využíváte AI nebo digitální nástroje ve výuce?',
+                    imageUrl: '',
+                    options: ['Každý den', 'Několikrát týdně', 'Zřídka', 'Ještě vůbec'],
+                    responses: []
+                }
+            ],
+            showResults: true,
+            studentJoined: false,
+            studentName: '',
+            answeredSlides: {}, // Uchovává odeslané odpovědi žáka { slideId: value }
+            connectedStudentsCount: 0,
+            userProfile: JSON.parse(localStorage.getItem('edupoll_user')) || null,
+            myPresentationsList: []
+        };
+
+        // Initialize Auth
+        async function initAuth() {
+            if (!auth) return;
+            try {
+                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                    const cred = await signInWithCustomToken(auth, __initial_auth_token);
+                    currentUser = cred.user;
+                } else {
+                    const cred = await signInAnonymously(auth);
+                    currentUser = cred.user;
+                }
+                loadUserPresentations();
+            } catch(e) {
+                console.error("Auth initialization failed:", e);
+            }
+        }
+
+        // FIREBASE FIRESTORE DATA OPS
+        window.saveCurrentPresentation = async function() {
+            const name = prompt("Zadejte název prezentace:", window.state.activePresentationTitle);
+            if (!name) return;
+            window.state.activePresentationTitle = name;
+            document.getElementById('active-presentation-title').innerText = name;
+
+            if (!db || !auth?.currentUser) {
+                showToast("Uloženo do paměti prohlížeče (Lokální režim)", "success");
+                localStorage.setItem('edupoll_current_pres', JSON.stringify({
+                    title: window.state.activePresentationTitle,
+                    slides: window.state.slides
+                }));
+                return;
+            }
+
+            const userId = auth.currentUser.uid;
+            const presDocRef = doc(db, 'artifacts', appId, 'users', userId, 'presentations', window.state.activePresentationId);
+
+            try {
+                await setDoc(presDocRef, {
+                    id: window.state.activePresentationId,
+                    title: window.state.activePresentationTitle,
+                    slides: window.state.slides,
+                    updatedAt: Date.now()
+                }, { merge: true });
+
+                showToast("Prezentace byla úspěšně uložena do databáze!", "success");
+                loadUserPresentations();
+            } catch(e) {
+                console.error("Error saving presentation:", e);
+                showToast("Chyba při ukládání do cloudu");
+            }
+        };
+
+        window.loadUserPresentations = async function() {
+            if (!db || !auth?.currentUser) return;
+            const userId = auth.currentUser.uid;
+            const colRef = collection(db, 'artifacts', appId, 'users', userId, 'presentations');
+
+            try {
+                const snapshot = await getDocs(colRef);
+                const list = [];
+                snapshot.forEach(docSnap => {
+                    list.push(docSnap.data());
+                });
+                window.state.myPresentationsList = list;
+            } catch(e) {
+                console.error("Error loading presentations:", e);
+            }
+        };
+
+        window.publishLiveRoomState = async function() {
+            if (!db) return;
+            const roomDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'rooms', window.state.pin);
+
+            try {
+                await setDoc(roomDocRef, {
+                    pin: window.state.pin,
+                    presentationTitle: window.state.activePresentationTitle,
+                    currentSlideIndex: window.state.currentSlideIndex,
+                    pacingMode: window.state.pacingMode,
+                    slides: window.state.slides,
+                    updatedAt: Date.now()
+                }, { merge: true });
+            } catch(e) {
+                console.error("Error publishing room state:", e);
+            }
+        };
+
+        window.subscribeToRoom = function(pin) {
+            if (!db) return;
+            if (unsubscribeRoomListener) unsubscribeRoomListener();
+
+            const roomDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'rooms', pin);
+
+            unsubscribeRoomListener = onSnapshot(roomDocRef, (docSnap) => {
+                if (docSnap.exists()) {
+                    const data = docSnap.data();
+                    window.state.slides = data.slides || window.state.slides;
+                    window.state.currentSlideIndex = data.currentSlideIndex ?? window.state.currentSlideIndex;
+                    window.state.pacingMode = data.pacingMode || window.state.pacingMode;
+
+                    if (window.state.role === 'teacher') {
+                        renderTeacherView();
+                    } else if (window.state.role === 'student' && window.state.studentJoined) {
+                        renderStudentView();
+                    }
+                }
+            }, (err) => {
+                console.error("Room listener error:", err);
+            });
+        };
+
+        window.submitStudentResponseCloud = async function(slideId, responseVal) {
+            window.state.answeredSlides[slideId] = responseVal;
+
+            if (!db) {
+                showToast("Odpověď odeslána!", "success");
+                renderStudentView();
+                return;
+            }
+            const roomDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'rooms', window.state.pin);
+
+            try {
+                const docSnap = await getDoc(roomDocRef);
+                if (docSnap.exists()) {
+                    const data = docSnap.data();
+                    const slides = data.slides || [];
+                    const targetSlide = slides.find(s => s.id === slideId);
+                    if (targetSlide) {
+                        targetSlide.responses.push({
+                            student: window.state.studentName || 'Anonym',
+                            value: responseVal,
+                            timestamp: Date.now()
+                        });
+                        await updateDoc(roomDocRef, { slides: slides, updatedAt: Date.now() });
+                        showToast("Odpověď odeslána!", "success");
+                        renderStudentView();
+                    }
+                }
+            } catch(e) {
+                console.error("Error submitting response:", e);
+                showToast("Chyba při odesílání odpovědi");
+            }
+        };
+
+        // Initialization lifecycle
+        window.addEventListener('DOMContentLoaded', async () => {
+            lucide.createIcons();
+            await initAuth();
+
+            const urlParams = new URLSearchParams(window.location.search);
+            const queryPin = urlParams.get('pin');
+            if (queryPin) {
+                window.state.pin = queryPin;
+                document.getElementById('input-student-pin').value = queryPin;
+                switchRole('student');
+            } else {
+                switchRole('teacher');
+                window.subscribeToRoom(window.state.pin);
+                window.publishLiveRoomState();
+            }
+
+            updateUserAuthUI();
+        });
+    </script>
+
+    <script>
+        // GLOBAL UI HANDLERS & NAVIGATION
+        let currentUploadedImageDataUrl = '';
+
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            const bgClass = type === 'success' ? 'bg-emerald-600 text-white' : 'bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900';
+            toast.className = `px-4 py-3 rounded-2xl shadow-xl text-xs font-bold flex items-center gap-2 animate-fade-in pointer-events-auto ${bgClass}`;
+            toast.innerHTML = `<i data-lucide="${type === 'success' ? 'check-circle' : 'info'}" class="w-4 h-4"></i> <span>${message}</span>`;
+            container.appendChild(toast);
+            lucide.createIcons();
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                toast.style.transition = 'opacity 0.3s ease';
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+
+        function switchRole(newRole) {
+            window.state.role = newRole;
+            const teacherView = document.getElementById('view-teacher');
+            const studentView = document.getElementById('view-student');
+            const btnTeacher = document.getElementById('btn-role-teacher');
+            const btnStudent = document.getElementById('btn-role-student');
+
+            if (newRole === 'teacher') {
+                teacherView.classList.remove('hidden');
+                studentView.classList.add('hidden');
+                btnTeacher.className = "px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-2 transition-all bg-indigo-600 text-white shadow-sm";
+                btnStudent.className = "px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-2 transition-all text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white";
+                renderTeacherView();
+            } else {
+                teacherView.classList.add('hidden');
+                studentView.classList.remove('hidden');
+                btnStudent.className = "px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-2 transition-all bg-indigo-600 text-white shadow-sm";
+                btnTeacher.className = "px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-2 transition-all text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white";
+                renderStudentView();
+            }
+            lucide.createIcons();
+        }
+
+        // TEACHER VIEW RENDER
+        function renderTeacherView() {
+            if (window.state.currentSlideIndex >= window.state.slides.length) {
+                window.state.currentSlideIndex = Math.max(0, window.state.slides.length - 1);
+            }
+            
+            const currentSlide = window.state.slides[window.state.currentSlideIndex] || { title: '', type: 'choice', responses: [], options: [], imageUrl: '' };
+            
+            document.getElementById('teacher-pin-display').innerText = window.state.pin;
+            document.getElementById('teacher-slide-counter').innerText = `${window.state.currentSlideIndex + 1} / ${window.state.slides.length}`;
+            document.getElementById('slide-count-badge').innerText = window.state.slides.length;
+            document.getElementById('teacher-slide-title').innerText = currentSlide.title;
+            document.getElementById('teacher-total-responses').innerText = currentSlide.responses?.length || 0;
+            document.getElementById('active-presentation-title').innerText = window.state.activePresentationTitle;
+
+            document.getElementById('btn-prev-slide').disabled = window.state.currentSlideIndex === 0;
+            document.getElementById('btn-next-slide').disabled = window.state.currentSlideIndex === window.state.slides.length - 1;
+
+            const btnPaceTeacher = document.getElementById('btn-pace-teacher');
+            const btnPaceSurvey = document.getElementById('btn-pace-survey');
+
+            if (window.state.pacingMode === 'teacher') {
+                btnPaceTeacher.className = "py-1.5 px-2 rounded-lg text-[11px] font-bold flex items-center justify-center gap-1.5 transition-all bg-indigo-600 text-white shadow-sm";
+                btnPaceSurvey.className = "py-1.5 px-2 rounded-lg text-[11px] font-bold flex items-center justify-center gap-1.5 transition-all text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800";
+            } else {
+                btnPaceSurvey.className = "py-1.5 px-2 rounded-lg text-[11px] font-bold flex items-center justify-center gap-1.5 transition-all bg-indigo-600 text-white shadow-sm";
+                btnPaceTeacher.className = "py-1.5 px-2 rounded-lg text-[11px] font-bold flex items-center justify-center gap-1.5 transition-all text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800";
+            }
+
+            const badgeMap = {
+                choice: 'Více možností',
+                wordcloud: 'Slovní mrak',
+                open: 'Otevřené Q&A',
+                rating: 'Hodnocení'
+            };
+            document.getElementById('slide-type-badge').innerText = badgeMap[currentSlide.type] || currentSlide.type;
+
+            renderTeacherSidebarSlides();
+
+            const canvasContainer = document.getElementById('teacher-canvas-container');
+            
+            if (!window.state.showResults) {
+                canvasContainer.innerHTML = `
+                    <div class="text-center p-10 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm max-w-sm">
+                        <i data-lucide="eye-off" class="w-12 h-12 text-slate-400 mx-auto mb-3"></i>
+                        <h3 class="text-base font-bold text-slate-800 dark:text-slate-200">Výsledky jsou skryté</h3>
+                        <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">Klikněte na tlačítko "Zobrazit výsledky" v liště</p>
+                    </div>
+                `;
+                lucide.createIcons();
+                return;
+            }
+
+            // Image element string if image exists
+            let imageHtml = '';
+            if (currentSlide.imageUrl) {
+                imageHtml = `
+                    <div class="mb-6 max-w-xl w-full flex justify-center animate-fade-in shrink-0">
+                        <img src="${currentSlide.imageUrl}" alt="Obrázek k zadání" class="max-h-60 sm:max-h-72 w-auto object-contain rounded-2xl border border-slate-200 dark:border-slate-800 shadow-md bg-white dark:bg-slate-900 p-1">
+                    </div>
+                `;
+            }
+
+            let interactiveHtml = '';
+            if (currentSlide.type === 'choice') {
+                interactiveHtml = renderChoiceChart(currentSlide);
+            } else if (currentSlide.type === 'wordcloud') {
+                interactiveHtml = renderWordCloud(currentSlide);
+            } else if (currentSlide.type === 'rating') {
+                interactiveHtml = renderRatingDisplay(currentSlide);
+            } else if (currentSlide.type === 'open') {
+                interactiveHtml = renderOpenEndedDisplay(currentSlide);
+            }
+
+            canvasContainer.innerHTML = `
+                <div class="w-full flex flex-col items-center justify-center">
+                    ${imageHtml}
+                    ${interactiveHtml}
+                </div>
+            `;
+            
+            lucide.createIcons();
+        }
+
+        function renderTeacherSidebarSlides() {
+            const container = document.getElementById('teacher-slide-list');
+            container.innerHTML = window.state.slides.map((slide, idx) => {
+                const isActive = idx === window.state.currentSlideIndex;
+                const respCount = slide.responses ? slide.responses.length : 0;
+                const hasImage = Boolean(slide.imageUrl);
+                return `
+                    <div onclick="goToSlide(${idx})" class="group cursor-pointer p-3 rounded-2xl border transition-all ${isActive ? 'bg-indigo-50/80 dark:bg-indigo-950/40 border-indigo-500/80 text-indigo-900 dark:text-white shadow-sm' : 'bg-white dark:bg-slate-950/50 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 text-slate-600 dark:text-slate-400'}">
+                        <div class="flex items-center justify-between mb-1">
+                            <span class="text-[10px] font-bold uppercase tracking-wider ${isActive ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-400 dark:text-slate-500'} flex items-center gap-1">
+                                <span>Otázka ${idx + 1}</span>
+                                ${hasImage ? '<i data-lucide="image" class="w-3 h-3 text-indigo-500"></i>' : ''}
+                            </span>
+                            <span class="text-[10px] bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-full border border-slate-200 dark:border-slate-700 font-medium">${respCount} odp.</span>
+                        </div>
+                        <p class="text-xs font-semibold truncate ${isActive ? 'text-slate-900 dark:text-white' : 'text-slate-700 dark:text-slate-300'}">${slide.title}</p>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function renderChoiceChart(slide) {
+            const responses = slide.responses || [];
+            const total = responses.length;
+            const counts = {};
+            (slide.options || []).forEach(opt => counts[opt] = 0);
+            responses.forEach(r => {
+                if (counts[r.value] !== undefined) counts[r.value]++;
+            });
+
+            return `
+                <div class="w-full max-w-2xl space-y-3.5 animate-fade-in">
+                    ${(slide.options || []).map((option, idx) => {
+                        const count = counts[option] || 0;
+                        const percentage = total > 0 ? Math.round((count / total) * 100) : 0;
+                        const barColors = ['bg-indigo-600', 'bg-sky-500', 'bg-emerald-500', 'bg-amber-500', 'bg-rose-500'];
+                        const barColor = barColors[idx % barColors.length];
+
+                        return `
+                            <div class="space-y-1.5">
+                                <div class="flex justify-between text-xs sm:text-sm font-semibold text-slate-700 dark:text-slate-200 px-1">
+                                    <span>${option}</span>
+                                    <span class="font-mono text-indigo-600 dark:text-indigo-400 font-bold">${count} (${percentage}%)</span>
+                                </div>
+                                <div class="w-full h-10 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-1 overflow-hidden shadow-sm">
+                                    <div class="chart-bar-fill h-full ${barColor} rounded-xl flex items-center justify-end px-3 font-bold text-xs text-white" style="width: ${Math.max(percentage, 2)}%">
+                                        ${percentage > 8 ? percentage + '%' : ''}
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    }).join('')}
+                </div>
+            `;
+        }
+
+        function renderWordCloud(slide) {
+            const responses = slide.responses || [];
+            if (responses.length === 0) {
+                return `<div class="text-slate-400 text-sm italic py-6">Zatím žádné odpovědi...</div>`;
+            }
+
+            const freq = {};
+            responses.forEach(r => {
+                const word = r.value ? r.value.trim() : '';
+                if (word) {
+                    freq[word] = (freq[word] || 0) + 1;
+                }
+            });
+
+            const maxCount = Math.max(...Object.values(freq), 1);
+            const colors = ['text-indigo-600 dark:text-indigo-400', 'text-sky-600 dark:text-sky-400', 'text-emerald-600 dark:text-emerald-400', 'text-amber-600 dark:text-amber-400', 'text-rose-600 dark:text-rose-400'];
+
+            return `
+                <div class="w-full max-w-3xl flex flex-wrap items-center justify-center gap-3 sm:gap-4 p-4 animate-fade-in">
+                    ${Object.entries(freq).map(([word, count], idx) => {
+                        const fontSize = 1.1 + ((count / maxCount) * 2.2);
+                        const colorClass = colors[idx % colors.length];
+                        return `
+                            <span class="word-cloud-item font-extrabold ${colorClass} bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 px-4 py-2 rounded-2xl shadow-sm" style="font-size: ${fontSize}rem">
+                                ${word}
+                                <sub class="text-xs text-slate-400 font-mono ml-1 font-normal">x${count}</sub>
+                            </span>
+                        `;
+                    }).join('')}
+                </div>
+            `;
+        }
+
+        function renderRatingDisplay(slide) {
+            const responses = slide.responses || [];
+            const total = responses.length;
+            const sum = responses.reduce((acc, r) => acc + Number(r.value || 0), 0);
+            const average = total > 0 ? (sum / total).toFixed(1) : '0.0';
+
+            return `
+                <div class="text-center space-y-4 animate-fade-in">
+                    <div class="inline-flex flex-col items-center justify-center bg-white dark:bg-slate-900 p-8 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-md">
+                        <span class="text-5xl font-black text-slate-900 dark:text-white font-mono tracking-tight">${average}</span>
+                        <div class="flex gap-1.5 my-3">
+                            ${[1,2,3,4,5].map(star => `
+                                <i data-lucide="star" class="w-6 h-6 ${star <= Math.round(average) ? 'text-amber-400 fill-amber-400' : 'text-slate-300 dark:text-slate-700'}"></i>
+                            `).join('')}
+                        </div>
+                        <span class="text-xs text-slate-500 dark:text-slate-400 font-medium">Průměrné hodnocení (${total} hlasů)</span>
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderOpenEndedDisplay(slide) {
+            const responses = slide.responses || [];
+            if (responses.length === 0) {
+                return `<div class="text-slate-400 text-sm italic py-6">Čekáme na první odpovědi...</div>`;
+            }
+
+            return `
+                <div class="w-full max-w-3xl grid grid-cols-1 sm:grid-cols-2 gap-3.5 animate-fade-in">
+                    ${responses.map(r => `
+                        <div class="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col justify-between">
+                            <p class="text-slate-800 dark:text-slate-200 text-sm font-medium leading-relaxed">"${r.value}"</p>
+                            <div class="mt-3 flex items-center justify-between text-xs text-slate-400 border-t border-slate-100 dark:border-slate-800 pt-2">
+                                <span class="font-semibold text-indigo-600 dark:text-indigo-400">${r.student || 'Anonym'}</span>
+                                <i data-lucide="message-circle" class="w-3.5 h-3.5 text-slate-400"></i>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+        }
+
+        // STUDENT VIEW RENDER
+        function renderStudentView() {
+            const loginCard = document.getElementById('student-login-card');
+            const activeCard = document.getElementById('student-active-card');
+
+            if (!window.state.studentJoined) {
+                loginCard.classList.remove('hidden');
+                activeCard.classList.add('hidden');
+                return;
+            }
+
+            loginCard.classList.add('hidden');
+            activeCard.classList.remove('hidden');
+            document.getElementById('student-connected-pin').innerText = window.state.pin;
+
+            const paceBadge = document.getElementById('student-pace-badge');
+            if (window.state.pacingMode === 'survey') {
+                paceBadge.innerText = "Průzkum (vlastní tempo)";
+                renderStudentSurveyMode();
+            } else {
+                paceBadge.innerText = "Prezentace (řízené tempo)";
+                renderStudentTeacherMode();
+            }
+
+            lucide.createIcons();
+        }
+
+        function renderStudentTeacherMode() {
+            const currentSlide = window.state.slides[window.state.currentSlideIndex] || { title: '', type: 'choice', imageUrl: '' };
+            const container = document.getElementById('student-slide-container');
+
+            let imageHtml = '';
+            if (currentSlide.imageUrl) {
+                imageHtml = `
+                    <div class="my-3 flex justify-center">
+                        <img src="${currentSlide.imageUrl}" alt="Obrázek zadání" class="max-h-52 w-auto object-contain rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm bg-slate-50 dark:bg-slate-950 p-1">
+                    </div>
+                `;
+            }
+
+            let html = `
+                <div class="space-y-2 text-center sm:text-left">
+                    <span class="text-[10px] font-extrabold uppercase tracking-widest text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200 dark:border-indigo-800 px-2.5 py-1 rounded-md">Otázka ${window.state.currentSlideIndex + 1} / ${window.state.slides.length}</span>
+                    <h3 class="text-lg font-bold text-slate-900 dark:text-white leading-snug">${currentSlide.title}</h3>
+                </div>
+                ${imageHtml}
+            `;
+
+            html += renderQuestionInputForSlide(currentSlide);
+            container.innerHTML = html;
+        }
+
+        function renderStudentSurveyMode() {
+            const container = document.getElementById('student-slide-container');
+            
+            let html = `
+                <div class="space-y-1 text-center sm:text-left mb-4">
+                    <h3 class="text-lg font-bold text-slate-900 dark:text-white">Vyplňte otázky vlastní rychlostí</h3>
+                </div>
+                <div class="space-y-6 max-h-[60vh] overflow-y-auto pr-1">
+            `;
+
+            window.state.slides.forEach((slide, idx) => {
+                let imageHtml = '';
+                if (slide.imageUrl) {
+                    imageHtml = `
+                        <div class="my-2 flex justify-center">
+                            <img src="${slide.imageUrl}" alt="Obrázek zadání" class="max-h-44 w-auto object-contain rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm bg-white dark:bg-slate-900 p-1">
+                        </div>
+                    `;
+                }
+
+                html += `
+                    <div class="p-4 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 space-y-3">
+                        <div class="flex items-center gap-2">
+                            <span class="text-[10px] font-extrabold uppercase tracking-wider text-indigo-600 dark:text-indigo-400 bg-indigo-100 dark:bg-indigo-950 px-2 py-0.5 rounded">Otázka ${idx + 1}</span>
+                            <span class="text-xs font-bold text-slate-800 dark:text-slate-200 truncate">${slide.title}</span>
+                        </div>
+                        ${imageHtml}
+                        ${renderQuestionInputForSlide(slide)}
+                    </div>
+                `;
+            });
+
+            html += `</div>`;
+            container.innerHTML = html;
+        }
+
+        function renderQuestionInputForSlide(slide) {
+            const previousAnswer = window.state.answeredSlides[slide.id];
+            if (previousAnswer !== undefined) {
+                return `
+                    <div class="p-6 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/60 rounded-2xl text-center space-y-2 animate-fade-in">
+                        <div class="w-10 h-10 bg-emerald-500 text-white rounded-full flex items-center justify-center mx-auto shadow-md">
+                            <i data-lucide="check" class="w-6 h-6"></i>
+                        </div>
+                        <h4 class="font-extrabold text-emerald-900 dark:text-emerald-100 text-sm">Odpověď byla zaznamenána!</h4>
+                        <p class="text-xs text-emerald-700 dark:text-emerald-300">Vaše volba: <strong class="font-bold">${previousAnswer}</strong></p>
+                        <p class="text-[10px] text-slate-400 dark:text-slate-500 pt-1">Hlasování pro tuto otázku je dokončeno.</p>
+                    </div>
+                `;
+            }
+
+            if (slide.type === 'choice') {
+                return `
+                    <div class="space-y-2 pt-1">
+                        ${(slide.options || []).map(option => `
+                            <button onclick="handleStudentSubmitResponse('${slide.id}', '${option.replace(/'/g, "\\'")}')" class="w-full p-3.5 bg-white dark:bg-slate-900 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 border border-slate-200 dark:border-slate-800 hover:border-indigo-500 text-left font-semibold text-xs sm:text-sm rounded-2xl text-slate-800 dark:text-slate-200 transition-all flex items-center justify-between group shadow-sm">
+                                <span>${option}</span>
+                                <i data-lucide="check-circle" class="w-4 h-4 text-slate-300 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors"></i>
+                            </button>
+                        `).join('')}
+                    </div>
+                `;
+            } else if (slide.type === 'wordcloud') {
+                return `
+                    <form onsubmit="handleWordCloudFormSubmit(event, '${slide.id}')" class="space-y-2 pt-1">
+                        <input type="text" id="word-input-${slide.id}" maxlength="25" required placeholder="Zadejte 1 slovo..." class="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 focus:border-indigo-600 text-slate-900 dark:text-white rounded-xl px-4 py-2.5 text-xs text-center outline-none">
+                        <button type="submit" class="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl text-xs shadow-sm transition-all">Odeslat slovo</button>
+                    </form>
+                `;
+            } else if (slide.type === 'rating') {
+                return `
+                    <div class="pt-1 flex flex-col items-center space-y-2">
+                        <div class="flex gap-2">
+                            ${[1,2,3,4,5].map(num => `
+                                <button onclick="handleStudentSubmitResponse('${slide.id}', ${num})" class="w-10 h-10 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/30 text-amber-500 font-bold rounded-xl flex items-center justify-center text-sm transition-all">
+                                    ${num}
+                                </button>
+                            `).join('')}
+                        </div>
+                    </div>
+                `;
+            } else if (slide.type === 'open') {
+                return `
+                    <form onsubmit="handleOpenFormSubmit(event, '${slide.id}')" class="space-y-2 pt-1">
+                        <textarea id="open-input-${slide.id}" rows="2" required placeholder="Napište svou odpověď..." class="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 focus:border-indigo-600 text-slate-900 dark:text-white rounded-xl p-2.5 text-xs outline-none resize-none"></textarea>
+                        <button type="submit" class="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl text-xs shadow-sm transition-all">Odeslat odpověď</button>
+                    </form>
+                `;
+            }
+            return '';
+        }
+
+        function joinStudentSession(e) {
+            e.preventDefault();
+            const pinInput = document.getElementById('input-student-pin').value.trim();
+            const nameInput = document.getElementById('input-student-name').value.trim();
+
+            if (pinInput !== window.state.pin) {
+                showToast('Hledám místnost s PINem: ' + pinInput + '...');
+                window.state.pin = pinInput;
+            }
+
+            window.state.studentJoined = true;
+            window.state.studentName = nameInput || 'Žák';
+            
+            if (window.subscribeToRoom) window.subscribeToRoom(window.state.pin);
+
+            renderStudentView();
+            showToast('Úspěšně připojeno!', 'success');
+        }
+
+        function leaveStudentSession() {
+            window.state.studentJoined = false;
+            renderStudentView();
+        }
+
+        function handleStudentSubmitResponse(slideId, val) {
+            if (window.submitStudentResponseCloud) {
+                window.submitStudentResponseCloud(slideId, val);
+            }
+        }
+
+        function handleWordCloudFormSubmit(e, slideId) {
+            e.preventDefault();
+            const input = document.getElementById(`word-input-${slideId}`);
+            const val = input ? input.value.trim() : '';
+            if (val) {
+                handleStudentSubmitResponse(slideId, val);
+                input.value = '';
+            }
+        }
+
+        function handleOpenFormSubmit(e, slideId) {
+            e.preventDefault();
+            const input = document.getElementById(`open-input-${slideId}`);
+            const val = input ? input.value.trim() : '';
+            if (val) {
+                handleStudentSubmitResponse(slideId, val);
+                input.value = '';
+            }
+        }
+
+        // TEACHER CONTROLS
+        function goToSlide(idx) {
+            window.state.currentSlideIndex = idx;
+            if (window.publishLiveRoomState) window.publishLiveRoomState();
+            renderTeacherView();
+        }
+
+        function nextSlide() {
+            if (window.state.currentSlideIndex < window.state.slides.length - 1) {
+                goToSlide(window.state.currentSlideIndex + 1);
+            }
+        }
+
+        function prevSlide() {
+            if (window.state.currentSlideIndex > 0) {
+                goToSlide(window.state.currentSlideIndex - 1);
+            }
+        }
+
+        function setPacingMode(mode) {
+            window.state.pacingMode = mode;
+            if (window.publishLiveRoomState) window.publishLiveRoomState();
+            renderTeacherView();
+            showToast(mode === 'teacher' ? 'Režim: Prezentace (řízené tempo)' : 'Režim: Průzkum (vlastní tempo)');
+        }
+
+        function toggleResultsVisibility() {
+            window.state.showResults = !window.state.showResults;
+            const btnText = document.getElementById('btn-toggle-results-text');
+            btnText.innerText = window.state.showResults ? 'Skrýt výsledky' : 'Zobrazit výsledky';
+            renderTeacherView();
+        }
+
+        function resetCurrentSlideResults() {
+            if (window.state.slides[window.state.currentSlideIndex]) {
+                const currentSlideId = window.state.slides[window.state.currentSlideIndex].id;
+                window.state.slides[window.state.currentSlideIndex].responses = [];
+                delete window.state.answeredSlides[currentSlideId];
+
+                if (window.publishLiveRoomState) window.publishLiveRoomState();
+                renderTeacherView();
+                showToast('Výsledky otázky byly vymazány');
+            }
+        }
+
+        function toggleFullscreen() {
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen();
+            } else {
+                if (document.exitFullscreen) {
+                    document.exitFullscreen();
+                }
+            }
+        }
+
+        // IMAGE UPLOAD IN MODAL
+        function handleImageUpload(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            if (file.size > 3 * 1024 * 1024) {
+                showToast('Obrázek je příliš velký. Maximální doporučená velikost je 3 MB.');
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = function(evt) {
+                currentUploadedImageDataUrl = evt.target.result;
+                const previewImg = document.getElementById('modal-image-preview');
+                const previewContainer = document.getElementById('modal-image-preview-container');
+                const removeBtn = document.getElementById('modal-remove-image-btn');
+                const btnLabel = document.getElementById('modal-image-btn-label');
+
+                previewImg.src = currentUploadedImageDataUrl;
+                previewContainer.classList.remove('hidden');
+                removeBtn.classList.remove('hidden');
+                btnLabel.innerText = 'Změnit obrázek...';
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function removeModalImage() {
+            currentUploadedImageDataUrl = '';
+            document.getElementById('modal-input-image').value = '';
+            document.getElementById('modal-image-preview-container').classList.add('hidden');
+            document.getElementById('modal-remove-image-btn').classList.add('hidden');
+            document.getElementById('modal-image-btn-label').innerText = 'Nahrát obrázek...';
+        }
+
+        // LIBRARY & PRESENTATION MANAGEMENT
+        function openLibraryModal() {
+            document.getElementById('modal-library').classList.remove('hidden');
+            renderLibraryList();
+        }
+
+        function closeLibraryModal() {
+            document.getElementById('modal-library').classList.add('hidden');
+        }
+
+        function renderLibraryList() {
+            const container = document.getElementById('library-list-container');
+            const list = window.state.myPresentationsList || [];
+
+            if (list.length === 0) {
+                container.innerHTML = `
+                    <div class="text-center py-10 text-slate-400">
+                        <i data-lucide="folder-x" class="w-10 h-10 mx-auto mb-2 opacity-50"></i>
+                        <p class="text-xs">Zatím nemáte v cloudu žádné uložené prezentace.</p>
+                        <p class="text-[11px] text-slate-500 mt-1">Připravte si hodinu a klikněte na tlačítko "Uložit".</p>
+                    </div>
+                `;
+                lucide.createIcons();
+                return;
+            }
+
+            container.innerHTML = list.map(item => `
+                <div class="p-4 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl flex items-center justify-between gap-4">
+                    <div class="min-w-0 flex-1">
+                        <h4 class="font-bold text-sm text-slate-900 dark:text-white truncate">${item.title}</h4>
+                        <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">${(item.slides || []).length} otázek</p>
+                    </div>
+                    <div class="flex items-center gap-2 shrink-0">
+                        <button onclick="launchSavedPresentation('${item.id}')" class="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl text-xs flex items-center gap-1.5 shadow-sm transition-all">
+                            <i data-lucide="play" class="w-3.5 h-3.5"></i>
+                            <span>Spustit výuku</span>
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+
+            lucide.createIcons();
+        }
+
+        function launchSavedPresentation(id) {
+            const pres = (window.state.myPresentationsList || []).find(p => p.id === id);
+            if (pres) {
+                window.state.activePresentationId = pres.id;
+                window.state.activePresentationTitle = pres.title;
+                window.state.slides = pres.slides || [];
+                window.state.currentSlideIndex = 0;
+                window.state.answeredSlides = {};
+
+                if (window.publishLiveRoomState) window.publishLiveRoomState();
+                renderTeacherView();
+                closeLibraryModal();
+                showToast(`Prezentace "${pres.title}" byla načtena!`, 'success');
+            }
+        }
+
+        function createNewBlankPresentation() {
+            window.state.activePresentationId = 'pres_' + Date.now();
+            window.state.activePresentationTitle = 'Nová hodina (' + new Date().toLocaleDateString('cs-CZ') + ')';
+            window.state.slides = [
+                {
+                    id: 'slide-1',
+                    type: 'choice',
+                    title: 'Moje první otázka',
+                    imageUrl: '',
+                    options: ['Ano', 'Ne'],
+                    responses: []
+                }
+            ];
+            window.state.currentSlideIndex = 0;
+            window.state.answeredSlides = {};
+
+            if (window.publishLiveRoomState) window.publishLiveRoomState();
+            renderTeacherView();
+            closeLibraryModal();
+            showToast('Nová prezentace vytvořena', 'success');
+        }
+
+        // QR CODE MODAL
+        function openQrModal() {
+            const joinUrl = window.location.origin + window.location.pathname + '?pin=' + window.state.pin;
+            document.getElementById('join-url-text').innerText = joinUrl;
+            document.getElementById('modal-pin-display').innerText = window.state.pin;
+
+            const qrApiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(joinUrl)}`;
+            document.getElementById('qr-code-img').src = qrApiUrl;
+
+            document.getElementById('modal-qr-code').classList.remove('hidden');
+        }
+
+        function closeQrModal() {
+            document.getElementById('modal-qr-code').classList.add('hidden');
+        }
+
+        function copyStudentLink() {
+            const joinUrl = window.location.origin + window.location.pathname + '?pin=' + window.state.pin;
+            const dummy = document.createElement("textarea");
+            document.body.appendChild(dummy);
+            dummy.value = joinUrl;
+            dummy.select();
+            document.execCommand("copy");
+            document.body.removeChild(dummy);
+            showToast('Odkaz pro žáky zkopírován do schránky!', 'success');
+        }
+
+        function exportResults() {
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(window.state.slides, null, 2));
+            const downloadAnchor = document.createElement('a');
+            downloadAnchor.setAttribute("href", dataStr);
+            downloadAnchor.setAttribute("download", `edupoll_vysledky_${window.state.pin}.json`);
+            document.body.appendChild(downloadAnchor);
+            downloadAnchor.click();
+            downloadAnchor.remove();
+            showToast('Soubor s výsledky byl stažen', 'success');
+        }
+
+        // ADD SLIDE MODAL
+        let selectedModalType = 'choice';
+
+        function openAddSlideModal() {
+            removeModalImage();
+            document.getElementById('modal-add-slide').classList.remove('hidden');
+        }
+
+        function closeAddSlideModal() {
+            document.getElementById('modal-add-slide').classList.add('hidden');
+            removeModalImage();
+        }
+
+        function addModalOptionInput(value = '') {
+            const list = document.getElementById('modal-options-list');
+            if (!list) return;
+            const count = list.querySelectorAll('.modal-option-input').length + 1;
+            
+            const row = document.createElement('div');
+            row.className = 'flex items-center gap-2 option-row animate-fade-in';
+            row.innerHTML = `
+                <input type="text" class="modal-option-input w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white rounded-xl px-4 py-2 text-sm outline-none focus:border-indigo-600 dark:focus:border-indigo-500 transition-all" placeholder="Možnost ${count}" value="${value}">
+                <button type="button" onclick="removeModalOptionInput(this)" class="p-2 text-slate-400 hover:text-rose-500 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" title="Odstranit možnost">
+                    <i data-lucide="trash-2" class="w-4 h-4"></i>
+                </button>
+            `;
+            list.appendChild(row);
+            if (window.lucide) lucide.createIcons();
+        }
+
+        function removeModalOptionInput(btn) {
+            const list = document.getElementById('modal-options-list');
+            const rows = list.querySelectorAll('.option-row');
+            if (rows.length <= 2) {
+                showToast('Otázka s výběrem musí mít alespoň 2 možnosti.');
+                return;
+            }
+            btn.closest('.option-row').remove();
+        }
+
+        function selectModalType(type) {
+            selectedModalType = type;
+            const optionsContainer = document.getElementById('modal-options-container');
+            
+            ['choice', 'wordcloud', 'open', 'rating'].forEach(t => {
+                const btn = document.getElementById(`type-btn-${t}`);
+                if (btn) {
+                    btn.className = t === type 
+                        ? "p-3 bg-slate-50 dark:bg-slate-800/80 border-2 border-indigo-600 dark:border-indigo-500 rounded-2xl text-left text-xs font-medium transition-all"
+                        : "p-3 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-2xl text-left text-xs font-medium hover:border-indigo-500 transition-all";
+                }
+            });
+
+            if (type === 'choice') {
+                optionsContainer.classList.remove('hidden');
+            } else {
+                optionsContainer.classList.add('hidden');
+            }
+        }
+
+        function handleAddSlideSubmit(e) {
+            e.preventDefault();
+            const title = document.getElementById('modal-input-question').value.trim();
+            
+            const newSlide = {
+                id: 'slide-' + Date.now(),
+                type: selectedModalType,
+                title: title,
+                imageUrl: currentUploadedImageDataUrl || '',
+                responses: []
+            };
+
+            if (selectedModalType === 'choice') {
+                const optionInputs = document.querySelectorAll('.modal-option-input');
+                const options = Array.from(optionInputs).map(i => i.value.trim()).filter(v => v !== '');
+                newSlide.options = options.length > 0 ? options : ['Možnost 1', 'Možnost 2'];
+            }
+
+            window.state.slides.push(newSlide);
+            window.state.currentSlideIndex = window.state.slides.length - 1;
+            
+            if (window.publishLiveRoomState) window.publishLiveRoomState();
+            closeAddSlideModal();
+            renderTeacherView();
+
+            document.getElementById('modal-input-question').value = '';
+            showToast('Nová otázka přidána!', 'success');
+        }
+
+        // AUTH & GUIDE MODALS
+        function openAuthModal() {
+            document.getElementById('modal-auth').classList.remove('hidden');
+        }
+
+        function closeAuthModal() {
+            document.getElementById('modal-auth').classList.add('hidden');
+        }
+
+        function updateUserAuthUI() {
+            const btnAuthLabel = document.getElementById('user-auth-label');
+            const unauthView = document.getElementById('auth-unauth-view');
+            const profileView = document.getElementById('auth-profile-view');
+
+            if (window.state.userProfile) {
+                btnAuthLabel.innerText = window.state.userProfile.email.split('@')[0];
+                unauthView.classList.add('hidden');
+                profileView.classList.remove('hidden');
+                document.getElementById('user-profile-email').innerText = window.state.userProfile.email;
+                document.getElementById('user-avatar-text').innerText = window.state.userProfile.email.substring(0, 2).toUpperCase();
+            } else {
+                btnAuthLabel.innerText = 'Účet';
+                unauthView.classList.remove('hidden');
+                profileView.classList.add('hidden');
+            }
+        }
+
+        function handleAuthSubmit(e) {
+            e.preventDefault();
+            const email = document.getElementById('auth-email').value.trim();
+            if (!email) return;
+
+            window.state.userProfile = { email: email };
+            localStorage.setItem('edupoll_user', JSON.stringify(window.state.userProfile));
+            updateUserAuthUI();
+            closeAuthModal();
+            showToast('Profil uložen', 'success');
+        }
+
+        function handleLogout() {
+            window.state.userProfile = null;
+            localStorage.removeItem('edupoll_user');
+            updateUserAuthUI();
+            closeAuthModal();
+            showToast('Odhláseno');
+        }
+
+        function openGuideModal() {
+            document.getElementById('modal-guide').classList.remove('hidden');
+        }
+
+        function closeGuideModal() {
+            document.getElementById('modal-guide').classList.add('hidden');
+        }
+    </script>
+</body>
+</html>
