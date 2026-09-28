@@ -74,7 +74,13 @@
             </div>
             
             <div class="flex items-center space-x-3">
-                <!-- Tlačítko pro rychlé přebliknutí na zadání PINu žákem -->
+                <!-- Tlačítko Nápovědy -->
+                <button onclick="toggleHelpModal(true)" class="px-3 py-1.5 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 rounded-lg text-xs font-semibold transition flex items-center space-x-1.5">
+                    <i data-lucide="help-circle" class="w-4 h-4 text-sky-500"></i>
+                    <span>Jak to funguje?</span>
+                </button>
+
+                <!-- Tlačítko pro přebliknutí na žáka -->
                 <button onclick="showStudentView()" class="px-3 py-1.5 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 rounded-lg text-xs font-semibold transition border border-emerald-200 dark:border-emerald-800 flex items-center space-x-1">
                     <i data-lucide="users" class="w-4 h-4"></i>
                     <span>Vstoupit jako žák</span>
@@ -93,7 +99,7 @@
     <!-- Hlavní kontejner -->
     <main class="flex-grow max-w-6xl w-full mx-auto p-4 md:p-6">
 
-        <!-- POHLED UČITELE (PŘÍMO NAČTENÝ JAKO HLAVNÍ STRÁNKA) -->
+        <!-- POHLED UČITELE -->
         <div id="teacherView" class="space-y-6">
             <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
                 <div>
@@ -101,7 +107,11 @@
                         <span>Kabinet Učitele:</span>
                         <input type="text" id="pollTitleInput" value="Moje nové hlasování" class="bg-transparent border-b border-dashed border-slate-400 focus:border-sky-500 outline-none px-1 font-semibold text-sky-600 dark:text-sky-400">
                     </h1>
-                    <p class="text-xs text-slate-500 mt-1">Aktivní PIN relace: <span id="teacherPin" class="font-mono font-bold text-sky-600">---</span></p>
+                    <!-- Mikro-úvod přímo pod názvem -->
+                    <p class="text-xs text-slate-500 dark:text-slate-400 mt-1 flex items-center gap-1.5">
+                        <i data-lucide="sparkles" class="w-3.5 h-3.5 text-sky-500 shrink-0"></i>
+                        <span>Připravte otázky, uložte sadu nebo rovnou spusťte živou prezentaci. PIN: <strong id="teacherPin" class="font-mono text-sky-600 dark:text-sky-400">---</strong></span>
+                    </p>
                 </div>
 
                 <div class="flex flex-wrap items-center gap-2">
@@ -200,18 +210,46 @@
                     <div class="flex justify-between pt-4 border-t border-slate-200 dark:border-slate-700">
                         <button onclick="saveQuestion()" class="px-4 py-2 bg-sky-600 hover:bg-sky-700 text-white font-medium rounded-lg transition flex items-center space-x-1">
                             <i data-lucide="check" class="w-4 h-4"></i>
-                            <span>Aktualizovat otázku</span>
+                            <span>Uložit otázku</span>
                         </button>
                         <button onclick="deleteCurrentQuestion()" class="px-3 py-2 bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 hover:bg-red-200 rounded-lg text-sm transition">Smazat</button>
                     </div>
                 </div>
 
-                <!-- Seznam otázek -->
+                <!-- Seznam otázek + Empty State -->
                 <div class="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 flex flex-col justify-between">
                     <div>
                         <h2 class="text-lg font-bold border-b border-slate-200 dark:border-slate-700 pb-2 mb-4">Otázky v této sadě</h2>
+                        
+                        <!-- Seznam otázek -->
                         <div id="questionsList" class="space-y-2 max-h-80 overflow-y-auto"></div>
+
+                        <!-- Prázdný stav (Empty State) -->
+                        <div id="emptyState" class="hidden flex-col items-center justify-center p-6 text-center border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50/50 dark:bg-slate-800/30 my-4">
+                            <div class="w-12 h-12 bg-sky-100 dark:bg-sky-950/50 text-sky-600 dark:text-sky-400 rounded-full flex items-center justify-center mb-3">
+                                <i data-lucide="file-question" class="w-6 h-6"></i>
+                            </div>
+                            <h3 class="font-semibold text-slate-800 dark:text-slate-200 mb-1 text-sm">Zatím nemáte žádné otázky</h3>
+                            <p class="text-xs text-slate-500 dark:text-slate-400 mb-4">
+                                Vyberte typ otázky v editoru vlevo a vytvořte svou první otázku pro hlasování.
+                            </p>
+                            <div class="flex flex-col gap-1.5 text-xs text-slate-600 dark:text-slate-300 text-left">
+                                <div class="flex items-center gap-2">
+                                    <span class="w-4 h-4 rounded-full bg-sky-100 dark:bg-sky-900 text-sky-700 dark:text-sky-300 font-bold flex items-center justify-center text-[10px]">1</span>
+                                    <span>Napište znění v editoru</span>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <span class="w-4 h-4 rounded-full bg-sky-100 dark:bg-sky-900 text-sky-700 dark:text-sky-300 font-bold flex items-center justify-center text-[10px]">2</span>
+                                    <span>Klikněte na „Uložit otázku“</span>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <span class="w-4 h-4 rounded-full bg-sky-100 dark:bg-sky-900 text-sky-700 dark:text-sky-300 font-bold flex items-center justify-center text-[10px]">3</span>
+                                    <span>Spusťte živou prezentaci</span>
+                                </div>
+                            </div>
+                        </div>
                     </div>
+
                     <button onclick="addNewQuestion()" class="mt-4 w-full py-2 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 font-medium rounded-lg transition flex items-center justify-center space-x-2">
                         <i data-lucide="plus-circle" class="w-4 h-4"></i>
                         <span>Nová otázka</span>
@@ -317,7 +355,7 @@
             <!-- Hlavní Plátno -->
             <div class="bg-white dark:bg-slate-800 p-8 rounded-xl shadow-lg border border-slate-200 dark:border-slate-700 min-h-[420px] flex flex-col justify-between relative overflow-hidden">
                 
-                <!-- SNÍMEK 0: ÚVODNÍ SPOJOVACÍ OBRAZOVKA -->
+                <!-- Úvodní spojovací obrazovka -->
                 <div id="introSlide" class="flex flex-col items-center justify-center text-center py-6 space-y-6 my-auto">
                     <h1 class="text-3xl md:text-4xl font-extrabold text-slate-800 dark:text-white">Připojte se k hlasování</h1>
                     
@@ -345,7 +383,7 @@
                     </button>
                 </div>
 
-                <!-- BĚŽNÝ SNÍMEK OTÁZKY -->
+                <!-- Snímek otázky -->
                 <div id="questionSlide" class="hidden flex-grow flex flex-col justify-between">
                     <h1 id="presQuestionTitle" class="text-2xl md:text-3xl font-bold text-center mb-4"></h1>
                     
@@ -371,6 +409,39 @@
                 <p id="modalPinDisplay" class="text-3xl font-black text-sky-600 font-mono tracking-wider"></p>
             </div>
             <button onclick="closeQrModal()" class="w-full py-2 bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-200 font-medium rounded-lg hover:bg-slate-300">Zavřít</button>
+        </div>
+    </div>
+
+    <!-- MODÁLNÍ OKNO NÁPOVĚDY "JAK TO FUNGUJE?" -->
+    <div id="helpModal" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-white dark:bg-slate-800 rounded-2xl max-w-md w-full p-6 shadow-xl border border-slate-200 dark:border-slate-700 relative">
+            <button onclick="toggleHelpModal(false)" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
+                <i data-lucide="x" class="w-5 h-5"></i>
+            </button>
+            
+            <div class="flex items-center gap-2 mb-4">
+                <i data-lucide="book-open" class="w-5 h-5 text-sky-600"></i>
+                <h2 class="text-lg font-bold text-slate-900 dark:text-white">Jak Hlasuj.to funguje?</h2>
+            </div>
+
+            <ol class="space-y-3 text-sm text-slate-600 dark:text-slate-300 mb-6">
+                <li class="flex gap-3">
+                    <span class="font-bold text-sky-600 shrink-0">1.</span>
+                    <span><strong>Vytvořte otázky:</strong> Pomocí editoru připravte znění otázek a možnosti. Sady si můžete uložit do cloudu.</span>
+                </li>
+                <li class="flex gap-3">
+                    <span class="font-bold text-sky-600 shrink-0">2.</span>
+                    <span><strong>Spusťte prezentaci:</strong> Klikněte na <em>„Spustit prezentaci“</em>. Na plátně se zobrazí QR kód a PIN.</span>
+                </li>
+                <li class="flex gap-3">
+                    <span class="font-bold text-sky-600 shrink-0">3.</span>
+                    <span><strong>Připojení žáků:</strong> Žáci naskenují QR kód nebo zadají PIN na svých telefonech a mohou ihned hlasovat.</span>
+                </li>
+            </ol>
+
+            <button onclick="toggleHelpModal(false)" class="w-full py-2.5 bg-sky-600 hover:bg-sky-700 text-white font-medium text-sm rounded-lg transition">
+                Rozumím, pokračovat
+            </button>
         </div>
     </div>
 
@@ -436,6 +507,15 @@
 
         function toggleDarkMode() {
             document.documentElement.classList.toggle('dark');
+        }
+
+        function toggleHelpModal(show) {
+            const modal = document.getElementById('helpModal');
+            if (show) {
+                modal.classList.remove('hidden');
+            } else {
+                modal.classList.add('hidden');
+            }
         }
 
         function showTeacherView() {
@@ -702,19 +782,32 @@
                 inputs.forEach(inp => { if(inp.value.trim()) options.push(inp.value.trim()); });
             }
 
-            questions[currentQuestionIndex] = {
-                id: questions[currentQuestionIndex]?.id || "q_" + Date.now(),
-                type: type,
-                text: text,
-                options: options,
-                maxResponses: maxResponses || '1',
-                imageUrl: currentUploadedImageBase64
-            };
+            if (questions.length === 0) {
+                questions.push({
+                    id: "q_" + Date.now(),
+                    type: type,
+                    text: text,
+                    options: options,
+                    maxResponses: maxResponses || '1',
+                    imageUrl: currentUploadedImageBase64
+                });
+                currentQuestionIndex = 0;
+            } else {
+                questions[currentQuestionIndex] = {
+                    id: questions[currentQuestionIndex]?.id || "q_" + Date.now(),
+                    type: type,
+                    text: text,
+                    options: options,
+                    maxResponses: maxResponses || '1',
+                    imageUrl: currentUploadedImageBase64
+                };
+            }
 
             renderQuestionsList();
         }
 
         function loadCurrentQuestionToEditor() {
+            if (questions.length === 0) return;
             if (currentQuestionIndex < 0) currentQuestionIndex = 0;
             const q = questions[currentQuestionIndex];
             if (!q) return;
@@ -735,7 +828,18 @@
 
         function renderQuestionsList() {
             const container = document.getElementById('questionsList');
+            const emptyState = document.getElementById('emptyState');
             container.innerHTML = '';
+
+            if (questions.length === 0) {
+                emptyState.classList.remove('hidden');
+                emptyState.classList.add('flex');
+                return;
+            } else {
+                emptyState.classList.add('hidden');
+                emptyState.classList.remove('flex');
+            }
+
             questions.forEach((q, idx) => {
                 const btn = document.createElement('button');
                 btn.className = `w-full text-left p-2.5 rounded-lg text-sm font-medium transition flex items-center justify-between ${idx === currentQuestionIndex ? 'bg-sky-100 dark:bg-sky-900/40 text-sky-700 dark:text-sky-300' : 'hover:bg-slate-100 dark:hover:bg-slate-700'}`;
@@ -758,7 +862,8 @@
         }
 
         function addNewQuestion() {
-            saveQuestion();
+            if (questions.length > 0) saveQuestion();
+            
             questions.push({
                 id: "q_" + Date.now(),
                 type: 'mc',
@@ -773,10 +878,17 @@
         }
 
         function deleteCurrentQuestion() {
-            if (questions.length <= 1) return alert('Musí zůstat alespoň jedna otázka.');
+            if (questions.length === 0) return;
             questions.splice(currentQuestionIndex, 1);
             currentQuestionIndex = Math.max(0, currentQuestionIndex - 1);
-            loadCurrentQuestionToEditor();
+            
+            if (questions.length > 0) {
+                loadCurrentQuestionToEditor();
+            } else {
+                document.getElementById('questionText').value = '';
+                document.getElementById('questionCounter').innerText = 'Otázka 1';
+                removeQuestionImage();
+            }
             renderQuestionsList();
         }
 
@@ -786,6 +898,11 @@
 
         // --- PREZENTACE & PREZENTAČNÍ OBSLUHA ---
         async function startPresentation() {
+            if (questions.length === 0) {
+                alert("Před spuštěním prezentace prosím vytvořte alespoň jednu otázku.");
+                return;
+            }
+
             saveQuestion();
             resultsHidden = true;
             updateResultsToggleButtonUI();
