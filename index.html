@@ -68,12 +68,18 @@
     <!-- Horní lišta -->
     <header class="bg-white dark:bg-slate-800 shadow-sm border-b border-slate-200 dark:border-slate-700 p-4 sticky top-0 z-50">
         <div class="max-w-6xl mx-auto flex justify-between items-center">
-            <div class="flex items-center space-x-3 cursor-pointer" onclick="showRoleSelector()">
+            <div class="flex items-center space-x-3 cursor-pointer" onclick="showTeacherView()">
                 <i data-lucide="bar-chart-2" class="w-8 h-8 text-sky-600"></i>
                 <span class="font-bold text-xl tracking-tight text-slate-900 dark:text-white">Hlasuj<span class="text-sky-600">.to</span></span>
             </div>
             
             <div class="flex items-center space-x-3">
+                <!-- Tlačítko pro rychlé přebliknutí na zadání PINu žákem -->
+                <button onclick="showStudentView()" class="px-3 py-1.5 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 rounded-lg text-xs font-semibold transition border border-emerald-200 dark:border-emerald-800 flex items-center space-x-1">
+                    <i data-lucide="users" class="w-4 h-4"></i>
+                    <span>Vstoupit jako žák</span>
+                </button>
+
                 <button id="themeToggle" onclick="toggleDarkMode()" class="p-2 rounded-lg bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600 transition">
                     <i data-lucide="moon" id="themeIcon" class="w-5 h-5"></i>
                 </button>
@@ -86,28 +92,9 @@
 
     <!-- Hlavní kontejner -->
     <main class="flex-grow max-w-6xl w-full mx-auto p-4 md:p-6">
-        
-        <!-- Výběr role -->
-        <div id="roleSelector" class="grid grid-cols-1 md:grid-cols-2 gap-6 my-12">
-            <div onclick="selectRole('teacher')" class="bg-white dark:bg-slate-800 p-8 rounded-2xl shadow-md border border-slate-200 dark:border-slate-700 hover:border-sky-500 dark:hover:border-sky-500 cursor-pointer transition transform hover:-translate-y-1 flex flex-col items-center text-center group">
-                <div class="w-16 h-16 bg-sky-100 dark:bg-sky-900/50 rounded-full flex items-center justify-center text-sky-600 dark:text-sky-400 mb-4 group-hover:scale-110 transition">
-                    <i data-lucide="presentation" class="w-8 h-8"></i>
-                </div>
-                <h2 class="text-2xl font-bold mb-2">Učitel / Prezentující</h2>
-                <p class="text-slate-500 dark:text-slate-400">Vytvářejte sady otázek, spravujte kabinet, ukládejte hlasování a spouštějte živé prezentace.</p>
-            </div>
 
-            <div onclick="selectRole('student')" class="bg-white dark:bg-slate-800 p-8 rounded-2xl shadow-md border border-slate-200 dark:border-slate-700 hover:border-emerald-500 dark:hover:border-emerald-500 cursor-pointer transition transform hover:-translate-y-1 flex flex-col items-center text-center group">
-                <div class="w-16 h-16 bg-emerald-100 dark:bg-emerald-900/50 rounded-full flex items-center justify-center text-emerald-600 dark:text-emerald-400 mb-4 group-hover:scale-110 transition">
-                    <i data-lucide="users" class="w-8 h-8"></i>
-                </div>
-                <h2 class="text-2xl font-bold mb-2">Účastník / Žák</h2>
-                <p class="text-slate-500 dark:text-slate-400">Připojte se k hlasování zadáním PIN kódu zadaného učitelem.</p>
-            </div>
-        </div>
-
-        <!-- POHLED UČITELE -->
-        <div id="teacherView" class="hidden space-y-6">
+        <!-- POHLED UČITELE (PŘÍMO NAČTENÝ JAKO HLAVNÍ STRÁNKA) -->
+        <div id="teacherView" class="space-y-6">
             <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
                 <div>
                     <h1 class="text-xl font-bold flex items-center gap-2">
@@ -134,7 +121,6 @@
                         <i data-lucide="play" class="w-4 h-4"></i>
                         <span>Spustit prezentaci</span>
                     </button>
-                    <button onclick="showRoleSelector()" class="px-3 py-2 bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 rounded-lg text-sm font-medium transition">Zpět</button>
                 </div>
             </div>
 
@@ -247,7 +233,7 @@
                     <input type="text" id="joinNameInput" placeholder="Jan Novák" class="w-full p-2.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700">
                 </div>
                 <button onclick="joinSession()" class="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg shadow transition">Vstoupit do místnosti</button>
-                <button onclick="showRoleSelector()" class="w-full py-2 text-sm text-slate-500 hover:underline text-center block">Zpět</button>
+                <button onclick="showTeacherView()" class="w-full py-2 text-sm text-slate-500 hover:underline text-center block">Zpět do kabinetu</button>
             </div>
 
             <!-- Rozhraní hlasování žáka -->
@@ -434,7 +420,7 @@
                 imageUrl: null
             }
         ];
-        let currentQuestionIndex = -1;
+        let currentQuestionIndex = 0;
         let studentCurrentQuestionIndex = 0; 
         let currentSessionPin = Math.floor(100000 + Math.random() * 900000).toString();
         let currentUploadedImageBase64 = null;
@@ -444,7 +430,6 @@
         let resultsHidden = true;
         let paceMode = 'teacher'; 
         let currentStudentName = '';
-        let lastRenderedQuestionId = null;
         let activeStudentQuestion = null;
 
         lucide.createIcons();
@@ -453,25 +438,16 @@
             document.documentElement.classList.toggle('dark');
         }
 
-        function selectRole(role) {
-            document.getElementById('roleSelector').classList.add('hidden');
-            if (role === 'teacher') {
-                document.getElementById('teacherView').classList.remove('hidden');
-                document.getElementById('teacherPin').innerText = currentSessionPin;
-                renderQuestionsList();
-                currentQuestionIndex = 0;
-                loadCurrentQuestionToEditor();
-                if (window.loadUserPolls) window.loadUserPolls();
-            } else {
-                document.getElementById('studentView').classList.remove('hidden');
-            }
-        }
-
-        function showRoleSelector() {
-            document.getElementById('teacherView').classList.add('hidden');
+        function showTeacherView() {
             document.getElementById('studentView').classList.add('hidden');
             document.getElementById('presentationView').classList.add('hidden');
-            document.getElementById('roleSelector').classList.remove('hidden');
+            document.getElementById('teacherView').classList.remove('hidden');
+        }
+
+        function showStudentView() {
+            document.getElementById('teacherView').classList.add('hidden');
+            document.getElementById('presentationView').classList.add('hidden');
+            document.getElementById('studentView').classList.remove('hidden');
         }
 
         function handleImageUpload(e) {
@@ -821,6 +797,7 @@
             
             const directJoinUrl = `${window.location.origin}${window.location.pathname}?pin=${currentSessionPin}`;
 
+            document.getElementById('teacherPin').innerText = currentSessionPin;
             document.getElementById('presPin').innerText = currentSessionPin;
             document.getElementById('presWebUrl').innerText = DISPLAY_SHORT_URL;
             document.getElementById('introFullUrl').innerText = DISPLAY_SHORT_URL;
@@ -913,7 +890,7 @@
             }
 
             introSlide.classList.add('hidden');
-            questionSlide.remove('hidden');
+            questionSlide.classList.remove('hidden');
 
             const q = questions[currentQuestionIndex];
             document.getElementById('presQuestionTitle').innerText = q ? `${currentQuestionIndex + 1}. ${q.text}` : '';
@@ -1265,15 +1242,19 @@
 
         // AUTOMATICKÉ ČTENÍ PARMETRŮ Z URL (& OTEVŘENÍ POHLEDU ŽÁKA)
         window.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('teacherPin').innerText = currentSessionPin;
+            renderQuestionsList();
+            loadCurrentQuestionToEditor();
+
             const urlParams = new URLSearchParams(window.location.search);
             const pinParam = urlParams.get('pin');
             const roleParam = urlParams.get('role');
 
             if (pinParam) {
-                selectRole('student');
+                showStudentView();
                 document.getElementById('joinPinInput').value = pinParam;
             } else if (roleParam === 'student') {
-                selectRole('student');
+                showStudentView();
             }
         });
 
