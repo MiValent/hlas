@@ -101,7 +101,7 @@
                 <div class="w-16 h-16 bg-emerald-100 dark:bg-emerald-900/50 rounded-full flex items-center justify-center text-emerald-600 dark:text-emerald-400 mb-4 group-hover:scale-110 transition">
                     <i data-lucide="users" class="w-8 h-8"></i>
                 </div>
-                <h2 class="text-2xl font-bold mb-2">Žák / Účastník</h2>
+                <h2 class="text-2xl font-bold mb-2">Účastník / Žák</h2>
                 <p class="text-slate-500 dark:text-slate-400">Připojte se k hlasování zadáním PIN kódu zadaného učitelem.</p>
             </div>
         </div>
@@ -177,7 +177,7 @@
                         <input type="text" id="questionText" placeholder="Napište otázku..." class="w-full p-2.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-sky-500">
                     </div>
 
-                    <!-- PŘIDÁNÍ OBRÁZKU -->
+                    <!-- Obrázek -->
                     <div class="p-3 bg-slate-50 dark:bg-slate-700/50 rounded-lg border border-slate-200 dark:border-slate-600 space-y-2">
                         <label class="block text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase">Obrázek k otázce (Volitelné)</label>
                         <div class="flex flex-col sm:flex-row items-center gap-3">
@@ -222,7 +222,7 @@
             </div>
         </div>
 
-        <!-- POHLED ŽÁKA -->
+        <!-- POHLED ÚČASTNÍKA -->
         <div id="studentView" class="hidden max-w-md mx-auto space-y-6">
             <div id="studentJoinCard" class="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-md border border-slate-200 dark:border-slate-700 space-y-4">
                 <h2 class="text-xl font-bold text-center">Připojit se k hlasování</h2>
@@ -238,7 +238,7 @@
                 <button onclick="showRoleSelector()" class="w-full py-2 text-sm text-slate-500 hover:underline text-center block">Zpět</button>
             </div>
 
-            <!-- Rozhraní hlasování žáka -->
+            <!-- Rozhraní hlasování -->
             <div id="studentPollCard" class="hidden bg-white dark:bg-slate-800 p-6 rounded-xl shadow-md border border-slate-200 dark:border-slate-700 space-y-6">
                 <div class="flex justify-between items-center text-xs text-slate-500 border-b border-slate-200 dark:border-slate-700 pb-2">
                     <span id="studentStatus" class="font-medium text-emerald-600 dark:text-emerald-400">Připojeno</span>
@@ -251,7 +251,7 @@
                     <p class="text-sm text-slate-500">Otázka se zobrazí hned, jakmile ji učitel spustí.</p>
                 </div>
 
-                <!-- Navigace v režimu vlastního tempa -->
+                <!-- Navigace v vlastním tempu -->
                 <div id="studentSelfPacedNav" class="hidden flex justify-between items-center border-b border-slate-200 dark:border-slate-700 pb-3">
                     <button onclick="studentPrevQuestion()" class="px-3 py-1 bg-slate-100 dark:bg-slate-700 text-xs rounded hover:bg-slate-200 flex items-center space-x-1">
                         <i data-lucide="chevron-left" class="w-3.5 h-3.5"></i><span>Předchozí</span>
@@ -288,7 +288,7 @@
                 <div class="flex items-center space-x-4">
                     <div class="flex items-center space-x-2">
                         <span class="text-xs text-slate-400 uppercase font-semibold">Připojte se na:</span>
-                        <span id="presWebUrl" class="font-semibold text-sky-600 underline">edupoll.live</span>
+                        <span id="presWebUrl" class="font-semibold text-sky-600 underline">mivalent.github.io/hlas/#/ucastnici</span>
                     </div>
                     <div class="flex items-center space-x-2 bg-sky-50 dark:bg-sky-900/30 px-3 py-1 rounded-lg border border-sky-200 dark:border-sky-800">
                         <span class="text-xs text-slate-500 uppercase font-semibold">PIN:</span>
@@ -319,7 +319,7 @@
             <!-- Hlavní Plátno -->
             <div class="bg-white dark:bg-slate-800 p-8 rounded-xl shadow-lg border border-slate-200 dark:border-slate-700 min-h-[420px] flex flex-col justify-between relative overflow-hidden">
                 
-                <!-- SNÍMEK 0: ÚVODNÍ SPOJOVACÍ OBRAZOVKA -->
+                <!-- Úvodní obrazovka -->
                 <div id="introSlide" class="flex flex-col items-center justify-center text-center py-6 space-y-6 my-auto">
                     <h1 class="text-3xl md:text-4xl font-extrabold text-slate-800 dark:text-white">Připojte se k hlasování</h1>
                     
@@ -347,7 +347,7 @@
                     </button>
                 </div>
 
-                <!-- BĚŽNÝ SNÍMEK OTÁZKY -->
+                <!-- Snímek otázky -->
                 <div id="questionSlide" class="hidden flex-grow flex flex-col justify-between">
                     <h1 id="presQuestionTitle" class="text-2xl md:text-3xl font-bold text-center mb-4"></h1>
                     
@@ -459,7 +459,6 @@
             document.getElementById('roleSelector').classList.remove('hidden');
         }
 
-        // UNIVERZÁLNÍ NAHRÁNÍ OBRÁZKU A AUTOMATICKÉ ZMENŠENÍ SOUBORU
         function handleImageUpload(e) {
             const file = e.target.files[0];
             if (!file) return;
@@ -471,7 +470,7 @@
                     const canvas = document.createElement('canvas');
                     let width = img.width;
                     let height = img.height;
-                    const maxDim = 800; // Zmenšení max na 800px
+                    const maxDim = 800;
 
                     if (width > height && width > maxDim) {
                         height *= maxDim / width;
@@ -783,7 +782,7 @@
             paceMode = document.getElementById('paceModePrepSelect').value;
         }
 
-        // --- PREZENTACE & PREZENTAČNÍ OBSLUHA ---
+        // --- PREZENTACE ---
         async function startPresentation() {
             saveQuestion();
             resultsHidden = true;
@@ -794,16 +793,17 @@
             
             currentQuestionIndex = -1;
             
-            const currentUrl = window.location.origin + window.location.pathname;
-            const joinUrl = `${currentUrl}?pin=${currentSessionPin}`;
+            const baseUrl = window.location.origin + window.location.pathname;
+            const participantUrl = `${baseUrl}#/ucastnici`;
+            const joinUrlWithPin = `${participantUrl}?pin=${currentSessionPin}`;
 
             document.getElementById('presPin').innerText = currentSessionPin;
-            document.getElementById('presWebUrl').innerText = window.location.host || 'edupoll.live';
-            document.getElementById('introFullUrl').innerText = window.location.host || 'edupoll.live';
+            document.getElementById('presWebUrl').innerText = participantUrl.replace(/^https?:\/\//, '');
+            document.getElementById('introFullUrl').innerText = participantUrl.replace(/^https?:\/\//, '');
             document.getElementById('introPinDisplay').innerText = currentSessionPin;
             document.getElementById('modalPinDisplay').innerText = currentSessionPin;
 
-            generateQrCodes(joinUrl);
+            generateQrCodes(joinUrlWithPin);
             
             if (window.db) {
                 const { doc, setDoc } = window.fbModules;
@@ -894,7 +894,6 @@
             const q = questions[currentQuestionIndex];
             document.getElementById('presQuestionTitle').innerText = q ? `${currentQuestionIndex + 1}. ${q.text}` : '';
             
-            // Zobrazení obrázku v prezentaci
             const imgContainer = document.getElementById('presImageContainer');
             const img = document.getElementById('presQuestionImage');
             if (q && q.imageUrl) {
@@ -1025,7 +1024,7 @@
             });
         }
 
-        // --- ŽÁKOVSKÁ LOGIKA ---
+        // --- ÚČASTNICKÁ LOGIKA ---
         function joinSession() {
             const pin = document.getElementById('joinPinInput').value.trim();
             const name = document.getElementById('joinNameInput').value.trim();
@@ -1063,7 +1062,6 @@
             activeCard.classList.remove('hidden');
             document.getElementById('studentQuestionTitle').innerText = q.text;
 
-            // Zobrazení obrázku pro žáka
             const imgContainer = document.getElementById('studentImageContainer');
             const img = document.getElementById('studentQuestionImage');
             if (q.imageUrl) {
@@ -1167,7 +1165,6 @@
             }
         }
 
-        // FIREBASE SYNCHRONIZACE RELACE
         function syncStateToFirebase() {
             if (!window.db) return;
             const { doc, setDoc } = window.fbModules;
@@ -1216,13 +1213,17 @@
             });
         }
 
-        // AUTOMATICKÉ ČTENÍ URL PINU
+        // AUTOMATICKÉ ČTENÍ ADRESY A PINU (PODPORA ROVNĚŽ PRO #/ucastnici)
         window.addEventListener('DOMContentLoaded', () => {
             const urlParams = new URLSearchParams(window.location.search);
             const pinParam = urlParams.get('pin');
-            if (pinParam) {
+            const hash = window.location.hash || '';
+
+            if (hash.includes('ucastnici') || hash.includes('student') || pinParam) {
                 selectRole('student');
-                document.getElementById('joinPinInput').value = pinParam;
+                if (pinParam) {
+                    document.getElementById('joinPinInput').value = pinParam;
+                }
             }
         });
 
