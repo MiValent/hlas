@@ -24,6 +24,8 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <!-- html2pdf Library pro export do PDF -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <!-- SheetJS (XLSX) pro export do Excelu -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <!-- Chart.js pro vykreslování grafů -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <!-- WordCloud2.js pro generování slovního mraku -->
@@ -163,7 +165,7 @@
             </div>
 
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <!-- Seznam otázek (Vlevo na desktopu, Nahoře na mobilu) -->
+                <!-- Seznam otázek -->
                 <div class="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 flex flex-col justify-between">
                     <div>
                         <h2 class="text-lg font-bold border-b border-slate-200 dark:border-slate-700 pb-2 mb-4">Otázky v této sadě</h2>
@@ -182,7 +184,7 @@
                     </button>
                 </div>
 
-                <!-- Editor otázek (Vpravo na desktopu, Dole na mobilu) -->
+                <!-- Editor otázek -->
                 <div class="lg:col-span-2 bg-white dark:bg-slate-800 p-6 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 space-y-4">
                     <h2 class="text-lg font-bold border-b border-slate-200 dark:border-slate-700 pb-2 flex justify-between items-center">
                         <span>Editor otázky</span>
@@ -193,6 +195,7 @@
                         <label class="block text-sm font-medium mb-1">Typ otázky</label>
                         <select id="questionType" onchange="changeQuestionType()" class="w-full p-2.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-sky-500">
                             <option value="mc">Multiple Choice (Výběr z možností)</option>
+                            <option value="ordering">Řazení (Srovnání pořadí)</option>
                             <option value="cloud">Word Cloud (Slovní mrak)</option>
                             <option value="rating">Hodnocení / Škála (1-5)</option>
                             <option value="open">Otevřená odpověď (Q&A)</option>
@@ -227,7 +230,7 @@
                     </div>
 
                     <div id="mcOptionsArea" class="space-y-3">
-                        <label class="block text-sm font-medium">Možnosti odpovědí</label>
+                        <label id="mcOptionsLabel" class="block text-sm font-medium">Možnosti odpovědí</label>
                         <div id="optionsList" class="space-y-2"></div>
                         <button onclick="addOptionInput()" class="text-sm text-sky-600 dark:text-sky-400 hover:underline font-medium flex items-center space-x-1">
                             <i data-lucide="plus" class="w-4 h-4"></i>
@@ -324,9 +327,14 @@
                 <div class="flex items-center space-x-2">
                     <span id="presCount" class="text-xs px-2.5 py-1.5 bg-slate-100 dark:bg-slate-700 rounded-lg text-slate-600 dark:text-slate-300 font-medium">Účastníci: 0</span>
 
+                    <button onclick="downloadAllResultsExcel()" class="px-3 py-1.5 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 rounded-lg text-xs font-semibold flex items-center space-x-1 transition" title="Stáhnout výsledky do Excelu">
+                        <i data-lucide="file-spreadsheet" class="w-4 h-4 text-emerald-600"></i>
+                        <span>Excel</span>
+                    </button>
+
                     <button onclick="downloadAllResultsPDF()" class="px-3 py-1.5 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 rounded-lg text-xs font-semibold flex items-center space-x-1 transition" title="Stáhnout všechny výsledky do PDF">
                         <i data-lucide="file-text" class="w-4 h-4 text-red-500"></i>
-                        <span>Stáhnout PDF</span>
+                        <span>PDF</span>
                     </button>
 
                     <button id="toggleHideResultsBtn" onclick="toggleHideResults()" class="px-3 py-1.5 bg-sky-600 hover:bg-sky-700 text-white rounded-lg text-xs font-semibold flex items-center space-x-1 transition shadow">
@@ -497,6 +505,7 @@
         let currentStudentName = '';
         let activeStudentQuestion = null;
         let activeCharts = [];
+        let studentOrderingState = [];
 
         lucide.createIcons();
 
@@ -653,6 +662,20 @@
                         }
                     }, 50);
 
+                } else if (q.type === 'ordering') {
+                    qHtml += `<div class="space-y-1.5 text-xs">`;
+                    if (filteredAnswers.length === 0) {
+                        qHtml += `<span class="text-slate-400">Žádné odpovědi</span>`;
+                    } else {
+                        filteredAnswers.forEach(a => {
+                            const items = Array.isArray(a.answer) ? a.answer.join(' → ') : a.answer;
+                            qHtml += `<div class="p-2 bg-white dark:bg-slate-700 rounded border border-slate-200 dark:border-slate-600"><strong>${a.student || 'Účastník'}:</strong> ${items}</div>`;
+                        });
+                    }
+                    qHtml += `</div>`;
+                    qBox.innerHTML = qHtml;
+                    contentEl.appendChild(qBox);
+
                 } else if (q.type === 'rating') {
                     const canvasId = `modal_chart_${idx}`;
                     qHtml += `<div class="max-w-md mx-auto my-2"><canvas id="${canvasId}" class="max-h-56"></canvas></div>`;
@@ -730,6 +753,80 @@
             activeCharts = [];
         }
 
+        // EXPORT DO EXCELU (XLSX)
+        function downloadAllResultsExcel(customTitle = null, customQuestions = null, customAnswers = null) {
+            const title = customTitle || document.getElementById('pollTitleInput').value.trim() || 'vysledky_hlasovani';
+            const pollQuestions = customQuestions || questions;
+            const pollAnswers = customAnswers || sessionAnswers;
+
+            const wb = XLSX.utils.book_new();
+
+            // List 1: Souhrn
+            const summaryData = [
+                ["Hlasuj.to - Export výsledků"],
+                ["Název sady:", title],
+                ["Datum exportu:", new Date().toLocaleString('cs-CZ')],
+                ["Celkem odpovědí:", pollAnswers.length],
+                ["Unikátní respondenti:", calculateUniqueParticipants(pollAnswers)],
+                []
+            ];
+
+            pollQuestions.forEach((q, idx) => {
+                summaryData.push([`Otázka ${idx + 1}: ${q.text}`, `[Typ: ${q.type}]`]);
+                const filteredAnswers = pollAnswers.filter(a => String(a.questionId) === String(q.id));
+
+                if (q.type === 'mc') {
+                    const counts = {};
+                    (q.options || []).forEach(opt => counts[opt] = 0);
+                    filteredAnswers.forEach(a => { counts[a.answer] = (counts[a.answer] || 0) + 1; });
+                    Object.entries(counts).forEach(([opt, cnt]) => {
+                        summaryData.push(["  " + opt, cnt]);
+                    });
+                } else if (q.type === 'rating') {
+                    const vals = filteredAnswers.map(a => Number(a.answer)).filter(n => !isNaN(n));
+                    const avg = vals.length ? (vals.reduce((a,b)=>a+b,0)/vals.length).toFixed(2) : '0';
+                    summaryData.push(["  Průměrné hodnocení:", avg]);
+                } else if (q.type === 'ordering') {
+                    summaryData.push(["  Počet odevzdaných řazení:", filteredAnswers.length]);
+                } else {
+                    summaryData.push(["  Počet odpovedí:", filteredAnswers.length]);
+                }
+                summaryData.push([]);
+            });
+
+            const wsSummary = XLSX.utils.aoa_to_sheet(summaryData);
+            XLSX.utils.book_append_sheet(wb, wsSummary, "Souhrn");
+
+            // List 2: Detailní odpovědi
+            const detailRows = [
+                ["Otázka #", "Znění otázky", "Typ", "Žák / Účastník", "Odpověď", "Čas"]
+            ];
+
+            pollAnswers.forEach(a => {
+                const q = pollQuestions.find(item => String(item.id) === String(a.questionId));
+                const qText = q ? q.text : 'Neznámá otázka';
+                const qType = q ? q.type : '';
+                const answerStr = Array.isArray(a.answer) ? a.answer.join(' -> ') : String(a.answer);
+                const timeStr = a.timestamp ? new Date(a.timestamp).toLocaleString('cs-CZ') : '';
+
+                detailRows.push([
+                    a.questionId,
+                    qText,
+                    qType,
+                    a.student || 'Anonym',
+                    answerStr,
+                    timeStr
+                ]);
+            });
+
+            const wsDetail = XLSX.utils.aoa_to_sheet(detailRows);
+            XLSX.utils.book_append_sheet(wb, wsDetail, "Odpovědi detailně");
+
+            const filename = `${title.toLowerCase().replace(/\s+/g, '_')}_vysledky.xlsx`;
+            XLSX.writeFile(wb, filename);
+            showToast("Excel byl úspěšně vygenerován!");
+        }
+
         function downloadAllResultsPDF(customTitle = null, customQuestions = null, customAnswers = null) {
             const title = customTitle || document.getElementById('pollTitleInput').value.trim() || 'vysledky_hlasovani';
             const pollQuestions = customQuestions || questions;
@@ -781,6 +878,14 @@
                             </div>
                         `;
                     });
+                    qHtml += `</div>`;
+                } else if (q.type === 'ordering') {
+                    qHtml += `<div class="space-y-1.5">`;
+                    filteredAnswers.forEach(a => {
+                        const items = Array.isArray(a.answer) ? a.answer.join(' → ') : a.answer;
+                        qHtml += `<div class="p-2 bg-white border border-slate-200 rounded text-xs"><strong>${a.student || 'Účastník'}:</strong> ${items}</div>`;
+                    });
+                    if (filteredAnswers.length === 0) qHtml += `<span class="text-xs text-slate-400">Žádné odpovědi</span>`;
                     qHtml += `</div>`;
                 } else if (q.type === 'cloud') {
                     const wordCounts = {};
@@ -861,7 +966,7 @@
                     const docRef = await addDoc(collection(window.db, "polls"), pollData);
                     currentPollId = docRef.id;
                 }
-                if (!quiet) alert("Sada otázek i s výsledky byla úspěšně uložena do cloudu!");
+                if (!quiet) showToast("Sada otázek i s výsledky byla uložena!");
                 loadUserPolls();
                 return true;
             } catch (err) {
@@ -918,7 +1023,10 @@
                                 <button data-action="results" data-id="${pollId}" class="px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs rounded-lg font-semibold transition flex items-center gap-1 shadow-sm">
                                     <i data-lucide="bar-chart-3" class="w-3.5 h-3.5"></i> Výsledky
                                 </button>
-                                <button data-action="pdf" data-id="${pollId}" class="px-2.5 py-1.5 bg-red-600 hover:bg-red-700 text-white text-xs rounded-lg font-semibold transition flex items-center gap-1 shadow-sm">
+                                <button data-action="excel" data-id="${pollId}" class="px-2 py-1.5 bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 text-xs rounded-lg font-semibold hover:bg-emerald-200 transition flex items-center gap-1 shadow-sm">
+                                    <i data-lucide="file-spreadsheet" class="w-3.5 h-3.5"></i> Excel
+                                </button>
+                                <button data-action="pdf" data-id="${pollId}" class="px-2 py-1.5 bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300 text-xs rounded-lg font-semibold hover:bg-red-200 transition flex items-center gap-1 shadow-sm">
                                     <i data-lucide="file-text" class="w-3.5 h-3.5"></i> PDF
                                 </button>
                                 <button data-action="duplicate" data-id="${pollId}" title="Duplikovat" class="px-2 py-1.5 bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs rounded-lg font-medium hover:bg-slate-300 transition flex items-center gap-1">
@@ -940,6 +1048,7 @@
 
                         if (action === 'open') openPollFromCloud(id);
                         else if (action === 'results') viewResultsFromCloud(id);
+                        else if (action === 'excel') downloadExcelFromCloud(id);
                         else if (action === 'pdf') downloadPdfFromCloud(id);
                         else if (action === 'duplicate') duplicatePollFromCloud(id);
                         else if (action === 'delete') deletePollFromCloud(id);
@@ -963,6 +1072,19 @@
                 }
             } catch (e) {
                 console.error("Chyba zobrazení výsledků:", e);
+            }
+        }
+
+        async function downloadExcelFromCloud(pollId) {
+            const { doc, getDoc } = window.fbModules;
+            try {
+                const pollDoc = await getDoc(doc(window.db, "polls", pollId));
+                if (pollDoc.exists()) {
+                    const data = pollDoc.data();
+                    downloadAllResultsExcel(data.title, data.questions || [], data.savedAnswers || []);
+                }
+            } catch (e) {
+                console.error("Chyba při generování Excelu z cloudu:", e);
             }
         }
 
@@ -994,7 +1116,9 @@
                     currentQuestionIndex = 0;
                     renderQuestionsList();
                     loadCurrentQuestionToEditor();
-                    alert(`Načtena sada a uložené výsledky: ${data.title}`);
+                    
+                    // ZMĚNA: Použita toast notifikace namísto alert()
+                    showToast(`Sada "${data.title}" byla úspěšně načtena!`);
                 }
             } catch (e) {
                 console.error("Chyba při otevírání:", e);
@@ -1017,7 +1141,7 @@
                         updatedAt: Date.now()
                     };
                     await addDoc(collection(window.db, "polls"), newPoll);
-                    alert("Kopie byla úspěšně vytvořena!");
+                    showToast("Kopie sady byla úspěšně vytvořena!");
                     loadUserPolls();
                 }
             } catch (e) {
@@ -1031,6 +1155,7 @@
             try {
                 await deleteDoc(doc(window.db, "polls", pollId));
                 if (currentPollId === pollId) currentPollId = null;
+                showToast("Sada byla smazána.");
                 loadUserPolls();
             } catch (e) {
                 console.error("Chyba při mazání:", e);
@@ -1043,11 +1168,17 @@
         function changeQuestionType() {
             const type = document.getElementById('questionType').value;
             const mcArea = document.getElementById('mcOptionsArea');
+            const mcLabel = document.getElementById('mcOptionsLabel');
             const maxResponsesArea = document.getElementById('maxResponsesArea');
 
-            if (type === 'mc') {
+            if (type === 'mc' || type === 'ordering') {
                 mcArea.classList.remove('hidden');
                 maxResponsesArea.classList.add('hidden');
+                if (type === 'ordering') {
+                    mcLabel.innerText = "Položky k seřazení (v libovolném pořadí)";
+                } else {
+                    mcLabel.innerText = "Možnosti odpovědí";
+                }
             } else if (type === 'cloud' || type === 'open') {
                 mcArea.classList.add('hidden');
                 maxResponsesArea.classList.remove('hidden');
@@ -1057,7 +1188,7 @@
             }
         }
 
-        function renderOptionsInputs(options = ['Možnost 1', 'Možnost 2']) {
+        function renderOptionsInputs(options = ['Položka 1', 'Položka 2']) {
             const list = document.getElementById('optionsList');
             list.innerHTML = '';
             options.forEach((opt) => {
@@ -1077,7 +1208,7 @@
             const div = document.createElement('div');
             div.className = "flex items-center space-x-2";
             div.innerHTML = `
-                <input type="text" placeholder="Nová možnost" class="mc-option-input flex-grow p-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-sm">
+                <input type="text" placeholder="Nová položka" class="mc-option-input flex-grow p-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-sm">
                 <button onclick="this.parentElement.remove()" class="text-slate-400 hover:text-red-500"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
             `;
             list.appendChild(div);
@@ -1091,7 +1222,7 @@
             const maxResponses = document.getElementById('maxResponsesSelect').value;
             let options = [];
 
-            if (type === 'mc') {
+            if (type === 'mc' || type === 'ordering') {
                 const inputs = document.querySelectorAll('.mc-option-input');
                 inputs.forEach(inp => { if(inp.value.trim()) options.push(inp.value.trim()); });
             }
@@ -1135,7 +1266,7 @@
             showImagePreview(currentUploadedImageBase64);
 
             changeQuestionType();
-            if (q.type === 'mc') {
+            if (q.type === 'mc' || q.type === 'ordering') {
                 renderOptionsInputs(q.options || []);
             }
         }
@@ -1383,6 +1514,22 @@
                     `;
                 });
                 container.appendChild(wrapper);
+            } else if (q.type === 'ordering') {
+                if (filteredAnswers.length === 0) {
+                    container.innerHTML = `<p class="text-slate-400 text-sm">Zatím žádné odpovědi...</p>`;
+                } else {
+                    const wrapper = document.createElement('div');
+                    wrapper.className = "space-y-2 w-full max-w-xl mx-auto max-h-80 overflow-y-auto p-1";
+                    filteredAnswers.forEach(a => {
+                        const items = Array.isArray(a.answer) ? a.answer.join(' → ') : a.answer;
+                        wrapper.innerHTML += `
+                            <div class="p-3 bg-slate-100 dark:bg-slate-700/80 rounded-xl border border-slate-200 dark:border-slate-600 shadow-sm text-sm font-medium flex justify-between items-center">
+                                <span><strong>${a.student || 'Účastník'}:</strong> ${items}</span>
+                            </div>
+                        `;
+                    });
+                    container.appendChild(wrapper);
+                }
             } else if (q.type === 'cloud') {
                 const wordCounts = {};
                 filteredAnswers.forEach(a => {
@@ -1528,6 +1675,9 @@
                         </label>
                     `;
                 });
+            } else if (q.type === 'ordering') {
+                studentOrderingState = [...(q.options || [])];
+                renderStudentOrderingItems();
             } else if (q.type === 'rating') {
                 area.innerHTML = `
                     <div class="flex justify-between max-w-xs mx-auto py-2">
@@ -1544,6 +1694,38 @@
             }
 
             updateStudentResponseState();
+        }
+
+        function renderStudentOrderingItems() {
+            const area = document.getElementById('studentAnswerArea');
+            area.innerHTML = `
+                <p class="text-xs text-slate-500 mb-2 font-medium">Seřaďte položky od 1. místa dolů (použijte šipky):</p>
+                <div class="space-y-2">
+                    ${studentOrderingState.map((opt, idx) => `
+                        <div class="flex items-center justify-between p-3 border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-700/50">
+                            <span class="font-semibold text-sm"><strong class="text-sky-600 dark:text-sky-400 mr-2">${idx + 1}.</strong>${opt}</span>
+                            <div class="flex space-x-1">
+                                <button onclick="moveOrderingItem(${idx}, -1)" ${idx === 0 ? 'disabled' : ''} class="p-1 rounded hover:bg-slate-200 dark:hover:bg-slate-600 disabled:opacity-30">
+                                    <i data-lucide="chevron-up" class="w-4 h-4"></i>
+                                </button>
+                                <button onclick="moveOrderingItem(${idx}, 1)" ${idx === studentOrderingState.length - 1 ? 'disabled' : ''} class="p-1 rounded hover:bg-slate-200 dark:hover:bg-slate-600 disabled:opacity-30">
+                                    <i data-lucide="chevron-down" class="w-4 h-4"></i>
+                                </button>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+            lucide.createIcons();
+        }
+
+        function moveOrderingItem(index, direction) {
+            const newIndex = index + direction;
+            if (newIndex < 0 || newIndex >= studentOrderingState.length) return;
+            const temp = studentOrderingState[index];
+            studentOrderingState[index] = studentOrderingState[newIndex];
+            studentOrderingState[newIndex] = temp;
+            renderStudentOrderingItems();
         }
 
         function updateStudentResponseState() {
@@ -1604,12 +1786,14 @@
             if (q.type === 'mc' || q.type === 'rating') {
                 const checked = document.querySelector('input[name="studentAnswer"]:checked');
                 if (checked) val = checked.value;
+            } else if (q.type === 'ordering') {
+                val = studentOrderingState;
             } else {
                 const inp = document.getElementById('studentTextInput');
                 if (inp) val = inp.value.trim();
             }
 
-            if (!val) return alert('Vyberte nebo napište odpověď.');
+            if (!val || (Array.isArray(val) && val.length === 0)) return alert('Vyberte, seřaďte nebo napište odpověď.');
 
             if (window.db) {
                 const { doc, setDoc, arrayUnion } = window.fbModules;
