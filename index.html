@@ -1,580 +1,441 @@
 <!DOCTYPE html>
-<html lang="cs">
+<html lang="cs" class="h-full">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hlasuj.to</title>
+    <title>Interaktivní Hlasování & Prezentace</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- html2pdf.js pro export výsledků do PDF -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <script>
         tailwind.config = {
             darkMode: 'class',
             theme: {
                 extend: {
                     colors: {
-                        brand: { 50: '#f0f9ff', 100: '#e0f2fe', 500: '#0284c7', 600: '#0369a1', 700: '#075985' }
+                        brand: {
+                            50: '#f0f9ff',
+                            500: '#0284c7',
+                            600: '#0369a1',
+                            700: '#075985'
+                        }
                     }
                 }
             }
         }
     </script>
-    <!-- Lucide Icons -->
-    <script src="https://unpkg.com/lucide@latest"></script>
-    <!-- QRCodeJS Library -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-    <!-- html2pdf Library pro export do PDF -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
-    <!-- Chart.js pro vykreslování grafů -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    
-    <!-- Firebase SDK -->
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getFirestore, doc, setDoc, onSnapshot, updateDoc, arrayUnion, collection, addDoc, getDocs, deleteDoc, query, where } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
-        import { getAuth, signInWithPopup, GoogleAuthProvider, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-
-        const firebaseConfig = {
-            apiKey: "AIzaSyA5wm0BqfTdlxsQ3zQ-i_tpua2R01NQ4Oc",
-            authDomain: "hlasovani-6d722.firebaseapp.com",
-            projectId: "hlasovani-6d722",
-            storageBucket: "hlasovani-6d722.firebasestorage.app",
-            messagingSenderId: "520308415470",
-            appId: "1:520308415470:web:ef73f0abf6068953314cff"
-        };
-
-        try {
-            const app = initializeApp(firebaseConfig);
-            const db = getFirestore(app);
-            const auth = getAuth(app);
-
-            window.db = db;
-            window.auth = auth;
-            window.fbModules = { doc, setDoc, onSnapshot, updateDoc, arrayUnion, collection, addDoc, getDocs, deleteDoc, query, where, signInWithPopup, GoogleAuthProvider, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged };
-
-            onAuthStateChanged(auth, (user) => {
-                window.currentUser = user;
-                if (window.updateAuthUI) window.updateAuthUI(user);
-                if (user && window.loadUserPolls) window.loadUserPolls();
-            });
-        } catch (e) {
-            console.error("Chyba při inicializaci Firebase:", e);
-        }
-    </script>
-    <style>
-        .word-cloud-item {
-            display: inline-block;
-            margin: 4px 8px;
-            transition: all 0.3s ease;
-        }
-    </style>
 </head>
-<body class="bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 min-h-screen font-sans flex flex-col transition-colors duration-200">
+<body class="bg-slate-100 dark:bg-slate-900 text-slate-800 dark:text-slate-100 min-h-full flex flex-col font-sans transition-colors duration-200">
 
-    <!-- Horní lišta -->
-    <header class="bg-white dark:bg-slate-800 shadow-sm border-b border-slate-200 dark:border-slate-700 p-4 sticky top-0 z-50">
-        <div class="max-w-6xl mx-auto flex justify-between items-center">
-            <div class="flex items-center space-x-3 cursor-pointer" onclick="showTeacherView()">
-                <i data-lucide="bar-chart-2" class="w-8 h-8 text-sky-600"></i>
-                <span class="font-bold text-xl tracking-tight text-slate-900 dark:text-white">Hlasuj<span class="text-sky-600">.to</span></span>
-            </div>
-            
-            <div class="flex items-center space-x-3">
-                <button onclick="toggleHelpModal(true)" class="px-3 py-1.5 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 rounded-lg text-xs font-semibold transition flex items-center space-x-1.5">
-                    <i data-lucide="help-circle" class="w-4 h-4 text-sky-500"></i>
-                    <span>Jak to funguje?</span>
-                </button>
-
-                <button onclick="showStudentView()" class="px-3 py-1.5 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 rounded-lg text-xs font-semibold transition border border-emerald-200 dark:border-emerald-800 flex items-center space-x-1">
-                    <i data-lucide="users" class="w-4 h-4"></i>
-                    <span>Vstoupit jako žák</span>
-                </button>
-
-                <button id="themeToggle" onclick="toggleDarkMode()" class="p-2 rounded-lg bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600 transition">
-                    <i data-lucide="moon" id="themeIcon" class="w-5 h-5"></i>
-                </button>
-                <div id="authStatus" class="flex items-center space-x-2">
-                    <button onclick="openAuthModal()" class="px-3 py-1.5 bg-sky-600 text-white rounded-lg text-sm font-medium hover:bg-sky-700 transition">Přihlásit se</button>
+    <!-- Navigace -->
+    <nav class="bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 sticky top-0 z-30">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16">
+                <div class="flex items-center space-x-3">
+                    <div class="bg-sky-600 text-white p-2 rounded-xl font-bold text-xl tracking-wider">📊 EduPoll</div>
+                    <span class="text-xs px-2 py-1 bg-sky-100 text-sky-800 dark:bg-sky-900/50 dark:text-sky-300 rounded-full font-medium">v2.5</span>
+                </div>
+                
+                <!-- Ovládání profilu a účtů -->
+                <div class="flex items-center space-x-3">
+                    <div id="userInfo" class="hidden flex items-center space-x-3">
+                        <img id="userAvatar" class="w-8 h-8 rounded-full border border-sky-500" src="" alt="Avatar">
+                        <span id="userName" class="text-sm font-semibold hidden sm:inline"></span>
+                        <button id="logoutBtn" class="text-xs bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 px-3 py-1.5 rounded-lg transition">
+                            Odhlásit
+                        </button>
+                    </div>
+                    <button id="loginBtn" class="bg-sky-600 hover:bg-sky-700 text-white text-sm px-4 py-2 rounded-xl font-medium shadow-sm transition">
+                        Přihlásit přes Google
+                    </button>
                 </div>
             </div>
         </div>
-    </header>
+    </nav>
 
     <!-- Hlavní kontejner -->
-    <main class="flex-grow max-w-6xl w-full mx-auto p-4 md:p-6">
+    <main class="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8">
 
-        <!-- POHLED UČITELE -->
-        <div id="teacherView" class="space-y-6">
-            <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
+        <!-- 1. POHLED: UČITEL / DASHBOARD -->
+        <section id="teacherView" class="space-y-6">
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-200/80 dark:border-slate-700">
                 <div>
-                    <h1 class="text-xl font-bold flex items-center gap-2">
-                        <span>Kabinet Učitele:</span>
-                        <input type="text" id="pollTitleInput" value="Moje nové hlasování" class="bg-transparent border-b border-dashed border-slate-400 focus:border-sky-500 outline-none px-1 font-semibold text-sky-600 dark:text-sky-400">
-                    </h1>
-                    <p class="text-xs text-slate-500 dark:text-slate-400 mt-1 flex items-center gap-1.5">
-                        <i data-lucide="sparkles" class="w-3.5 h-3.5 text-sky-500 shrink-0"></i>
-                        <span>Připravte otázky, uložte sadu nebo rovnou spusťte živou prezentaci. PIN: <strong id="teacherPin" class="font-mono text-sky-600 dark:text-sky-400">---</strong></span>
-                    </p>
+                    <h1 class="text-2xl font-bold">Moje hlasování a sady</h1>
+                    <p class="text-sm text-slate-500 dark:text-slate-400">Vytvářejte otázky, spouštějte prezentace a vyhodnocujte výsledky.</p>
                 </div>
-
-                <div class="flex flex-wrap items-center gap-2">
-                    <div class="flex items-center space-x-2 bg-slate-50 dark:bg-slate-700/50 p-1.5 rounded-lg border border-slate-200 dark:border-slate-600">
-                        <label for="paceModePrepSelect" class="text-xs font-semibold text-slate-500 dark:text-slate-300">Tempo:</label>
-                        <select id="paceModePrepSelect" onchange="changePaceModeFromPrep()" class="p-1 text-xs rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 font-medium">
-                            <option value="teacher">Učitel (Řízená prezentace)</option>
-                            <option value="student">Žák (Vlastní tempo)</option>
-                        </select>
-                    </div>
-
-                    <button onclick="saveCurrentPollToCloud()" class="px-3 py-2 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 font-medium rounded-lg text-sm transition flex items-center space-x-1">
-                        <i data-lucide="cloud-upload" class="w-4 h-4"></i>
-                        <span>Uložit sadu & výsledky</span>
-                    </button>
-                    <button onclick="startPresentation()" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-medium rounded-lg shadow transition flex items-center space-x-2">
-                        <i data-lucide="play" class="w-4 h-4"></i>
-                        <span>Spustit prezentaci</span>
-                    </button>
-                </div>
+                <button id="openCreateBtn" class="w-full sm:w-auto bg-sky-600 hover:bg-sky-700 text-white font-semibold px-5 py-2.5 rounded-xl shadow transition flex items-center justify-center space-x-2">
+                    <span>+ Nová sada otázek</span>
+                </button>
             </div>
 
-            <!-- Uložená hlasování -->
-            <div class="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 space-y-3">
-                <div class="flex justify-between items-center border-b border-slate-200 dark:border-slate-700 pb-2">
-                    <h2 class="text-lg font-bold flex items-center gap-2">
-                        <i data-lucide="folder-kanban" class="w-5 h-5 text-sky-600"></i>
-                        <span>Moje uložená hlasování a výsledky</span>
-                    </h2>
-                    <button onclick="loadUserPolls()" class="text-xs text-sky-600 hover:underline flex items-center gap-1">
-                        <i data-lucide="refresh-cw" class="w-3 h-3"></i> Obnovit
-                    </button>
-                </div>
-                <div id="savedPollsContainer" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                    <p class="text-sm text-slate-400 col-span-full py-2">Pro zobrazení vašich uložených hlasování se prosím přihlaste.</p>
-                </div>
+            <!-- Seznam vytvořených sad -->
+            <div id="pollsGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                <!-- Dynamicky vkládané karty sad -->
+            </div>
+        </section>
+
+        <!-- 2. POHLED: ŽÁK / ÚČASTNÍK -->
+        <section id="studentView" class="hidden max-w-md mx-auto space-y-6 py-8">
+            <div class="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-lg border border-slate-200 dark:border-slate-700 text-center space-y-4">
+                <h2 class="text-xl font-bold">Připojit se k hlasování</h2>
+                <input type="text" id="joinPinInput" placeholder="Zadejte PIN místnosti" class="w-full text-center text-2xl font-mono tracking-widest p-3 border rounded-xl dark:bg-slate-700 dark:border-slate-600 focus:ring-2 focus:ring-sky-500 outline-none uppercase">
+                <input type="text" id="joinNameInput" placeholder="Vaše jméno nebo přezdívka" class="w-full text-center p-3 border rounded-xl dark:bg-slate-700 dark:border-slate-600 focus:ring-2 focus:ring-sky-500 outline-none">
+                <button id="joinRoomBtn" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 rounded-xl shadow transition">
+                    Vstoupit do místnosti
+                </button>
             </div>
 
-            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <!-- Editor otázek -->
-                <div class="lg:col-span-2 bg-white dark:bg-slate-800 p-6 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 space-y-4">
-                    <h2 class="text-lg font-bold border-b border-slate-200 dark:border-slate-700 pb-2 flex justify-between items-center">
-                        <span>Editor otázky</span>
-                        <span id="questionCounter" class="text-sm font-normal text-slate-500">Otázka 1</span>
-                    </h2>
-
-                    <div>
-                        <label class="block text-sm font-medium mb-1">Typ otázky</label>
-                        <select id="questionType" onchange="changeQuestionType()" class="w-full p-2.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-sky-500">
-                            <option value="mc">Multiple Choice (Výběr z možností)</option>
-                            <option value="cloud">Word Cloud (Slovní mrak)</option>
-                            <option value="rating">Hodnocení / Škála (1-5)</option>
-                            <option value="open">Otevřená odpověď (Q&A)</option>
-                        </select>
-                    </div>
-
-                    <div>
-                        <label class="block text-sm font-medium mb-1">Znění otázky</label>
-                        <input type="text" id="questionText" placeholder="Napište otázku..." class="w-full p-2.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-sky-500">
-                    </div>
-
-                    <div id="maxResponsesArea" class="hidden">
-                        <label class="block text-sm font-medium mb-1">Kolik odpovědí může účastník poslat?</label>
-                        <select id="maxResponsesSelect" class="w-full p-2.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-sky-500">
-                            <option value="1">Pouze 1 odpověď</option>
-                            <option value="2">Maximálně 2 odpovědi</option>
-                            <option value="3">Maximálně 3 odpovědi</option>
-                            <option value="5">Maximálně 5 odpovědí</option>
-                            <option value="unlimited">Neomezeně odpovědí</option>
-                        </select>
-                    </div>
-
-                    <div class="p-3 bg-slate-50 dark:bg-slate-700/50 rounded-lg border border-slate-200 dark:border-slate-600 space-y-2">
-                        <label class="block text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase">Obrázek k otázce (Volitelné)</label>
-                        <div class="flex flex-col sm:flex-row items-center gap-3">
-                            <input type="file" id="imageFileInput" accept="image/*" onchange="handleImageUpload(event)" class="text-xs text-slate-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-sky-50 file:text-sky-700 hover:file:bg-sky-100">
-                            <button id="removeImgBtn" onclick="removeQuestionImage()" class="hidden text-xs text-red-500 hover:underline">Odstranit obrázek</button>
-                        </div>
-                        <div id="imagePreviewContainer" class="hidden mt-2">
-                            <img id="imagePreview" src="" alt="Náhled" class="max-h-36 rounded-lg border border-slate-300 dark:border-slate-600 object-contain">
-                        </div>
-                    </div>
-
-                    <div id="mcOptionsArea" class="space-y-3">
-                        <label class="block text-sm font-medium">Možnosti odpovědí</label>
-                        <div id="optionsList" class="space-y-2"></div>
-                        <button onclick="addOptionInput()" class="text-sm text-sky-600 dark:text-sky-400 hover:underline font-medium flex items-center space-x-1">
-                            <i data-lucide="plus" class="w-4 h-4"></i>
-                            <span>Přidat možnost</span>
-                        </button>
-                    </div>
-
-                    <div class="flex justify-between pt-4 border-t border-slate-200 dark:border-slate-700">
-                        <button onclick="saveQuestion()" class="px-4 py-2 bg-sky-600 hover:bg-sky-700 text-white font-medium rounded-lg transition flex items-center space-x-1">
-                            <i data-lucide="check" class="w-4 h-4"></i>
-                            <span>Uložit otázku</span>
-                        </button>
-                        <button onclick="deleteCurrentQuestion()" class="px-3 py-2 bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 hover:bg-red-200 rounded-lg text-sm transition">Smazat</button>
-                    </div>
-                </div>
-
-                <!-- Seznam otázek -->
-                <div class="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 flex flex-col justify-between">
-                    <div>
-                        <h2 class="text-lg font-bold border-b border-slate-200 dark:border-slate-700 pb-2 mb-4">Otázky v této sadě</h2>
-                        <div id="questionsList" class="space-y-2 max-h-80 overflow-y-auto"></div>
-                        <div id="emptyState" class="hidden flex-col items-center justify-center p-6 text-center border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50/50 dark:bg-slate-800/30 my-4">
-                            <div class="w-12 h-12 bg-sky-100 dark:bg-sky-950/50 text-sky-600 dark:text-sky-400 rounded-full flex items-center justify-center mb-3">
-                                <i data-lucide="file-question" class="w-6 h-6"></i>
-                            </div>
-                            <h3 class="font-semibold text-slate-800 dark:text-slate-200 mb-1 text-sm">Zatím nemáte žádné otázky</h3>
-                        </div>
-                    </div>
-
-                    <button onclick="addNewQuestion()" class="mt-4 w-full py-2 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 font-medium rounded-lg transition flex items-center justify-center space-x-2">
-                        <i data-lucide="plus-circle" class="w-4 h-4"></i>
-                        <span>Nová otázka</span>
-                    </button>
-                </div>
+            <!-- Aktivní otázka pro žáka -->
+            <div id="studentQuestionCard" class="hidden bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-lg border border-slate-200 dark:border-slate-700 space-y-4">
+                <div class="text-xs font-bold uppercase tracking-wider text-sky-600 dark:text-sky-400" id="studentQCategory">Otázka</div>
+                <h3 id="studentQText" class="text-lg font-bold">...</h3>
+                <div id="studentInputArea" class="space-y-3"></div>
+                <button id="submitAnswerBtn" class="w-full bg-sky-600 hover:bg-sky-700 text-white font-bold py-3 rounded-xl transition">Odeslat odpověď</button>
             </div>
-        </div>
+        </section>
 
-        <!-- POHLED ŽÁKA / ÚČASTNÍKA -->
-        <div id="studentView" class="hidden max-w-md mx-auto space-y-6">
-            <div id="studentJoinCard" class="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-md border border-slate-200 dark:border-slate-700 space-y-4">
-                <h2 class="text-xl font-bold text-center">Připojit se k hlasování</h2>
+        <!-- 3. POHLED: PREZENTACE (ŽIVÉ VYSÍLÁNÍ UČITELE) -->
+        <section id="presentationView" class="hidden fixed inset-0 z-50 bg-slate-950 text-white flex flex-col p-6 overflow-y-auto">
+            <div class="flex justify-between items-center border-b border-slate-800 pb-4">
                 <div>
-                    <label class="block text-sm font-medium mb-1">PIN Kód relace</label>
-                    <input type="text" id="joinPinInput" placeholder="Zadejte PIN" class="w-full text-center text-2xl font-mono tracking-widest p-3 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 uppercase">
+                    <span class="text-xs uppercase font-semibold text-sky-400 tracking-wider">Živá Prezentace</span>
+                    <h2 id="presTitle" class="text-2xl font-bold">...</h2>
                 </div>
-                <div>
-                    <label class="block text-sm font-medium mb-1">Vaše jméno / přezdívka</label>
-                    <input type="text" id="joinNameInput" placeholder="Jan Novák" class="w-full p-2.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700">
-                </div>
-                <button onclick="joinSession()" class="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg shadow transition">Vstoupit do místnosti</button>
-                <button onclick="showTeacherView()" class="w-full py-2 text-sm text-slate-500 hover:underline text-center block">Zpět do kabinetu</button>
-            </div>
-
-            <div id="studentPollCard" class="hidden bg-white dark:bg-slate-800 p-6 rounded-xl shadow-md border border-slate-200 dark:border-slate-700 space-y-6">
-                <div class="flex justify-between items-center text-xs text-slate-500 border-b border-slate-200 dark:border-slate-700 pb-2">
-                    <span id="studentStatus" class="font-medium text-emerald-600 dark:text-emerald-400">Připojeno</span>
-                    <span id="studentRoomPin" class="font-mono"></span>
-                </div>
-
-                <div id="studentWaiting" class="text-center py-8 space-y-3">
-                    <i data-lucide="clock" class="w-12 h-12 text-sky-500 mx-auto animate-pulse"></i>
-                    <h3 class="text-lg font-medium">Čekání na učitele...</h3>
-                    <p class="text-sm text-slate-500">Otázka se zobrazí hned, jakmile ji učitel spustí.</p>
-                </div>
-
-                <div id="studentSelfPacedNav" class="hidden flex justify-between items-center border-b border-slate-200 dark:border-slate-700 pb-3">
-                    <button onclick="studentPrevQuestion()" class="px-3 py-1 bg-slate-100 dark:bg-slate-700 text-xs rounded hover:bg-slate-200 flex items-center space-x-1">
-                        <i data-lucide="chevron-left" class="w-3.5 h-3.5"></i><span>Předchozí</span>
-                    </button>
-                    <span id="studentQuestionIndexLabel" class="text-xs font-semibold text-slate-500">1 z 1</span>
-                    <button onclick="studentNextQuestion()" class="px-3 py-1 bg-slate-100 dark:bg-slate-700 text-xs rounded hover:bg-slate-200 flex items-center space-x-1">
-                        <span>Další</span><i data-lucide="chevron-right" class="w-3.5 h-3.5"></i>
-                    </button>
-                </div>
-
-                <div id="studentActiveQuestion" class="hidden space-y-4">
-                    <h2 id="studentQuestionTitle" class="text-xl font-bold text-center"></h2>
-                    
-                    <div id="studentImageContainer" class="hidden text-center">
-                        <img id="studentQuestionImage" src="" alt="Obrázek" class="max-h-48 mx-auto rounded-lg border border-slate-200 dark:border-slate-700 object-contain">
+                <div class="flex items-center space-x-6">
+                    <div class="bg-slate-800 px-4 py-2 rounded-xl text-center">
+                        <span class="text-xs text-slate-400 block">PIN KÓD</span>
+                        <span id="presPin" class="text-2xl font-mono font-bold text-emerald-400">000000</span>
                     </div>
-
-                    <div id="studentAnswerArea" class="space-y-3"></div>
-                    
-                    <button id="submitAnswerBtn" onclick="submitAnswer()" class="w-full py-3 bg-sky-600 hover:bg-sky-700 text-white font-bold rounded-lg shadow transition">Odeslat odpověď</button>
-                    
-                    <div id="studentSubmittedMessage" class="hidden p-4 bg-emerald-50 dark:bg-emerald-900/30 border border-emerald-200 dark:border-emerald-800 rounded-xl text-center space-y-1">
-                        <p class="font-bold text-emerald-700 dark:text-emerald-300">Odpověď byla odeslána!</p>
-                        <p id="studentResponseCountText" class="text-xs text-emerald-600 dark:text-emerald-400">Počkejte na další zadání od učitele.</p>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- PREZENTAČNÍ POHLED UČITELE -->
-        <div id="presentationView" class="hidden space-y-4">
-            
-            <div class="flex flex-wrap justify-between items-center bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 gap-3">
-                <div class="flex items-center space-x-4">
-                    <div class="flex items-center space-x-2">
-                        <span class="text-xs text-slate-400 uppercase font-semibold">Připojte se na:</span>
-                        <span id="presWebUrl" class="font-semibold text-sky-600 underline">1url.cz/@hlasujto</span>
-                    </div>
-                    <div class="flex items-center space-x-2 bg-sky-50 dark:bg-sky-900/30 px-3 py-1 rounded-lg border border-sky-200 dark:border-sky-800">
-                        <span class="text-xs text-slate-500 uppercase font-semibold">PIN:</span>
-                        <span id="presPin" class="text-2xl font-black text-sky-600 font-mono tracking-wider">----</span>
-                    </div>
-                    <button onclick="openQrModal()" class="p-2 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 rounded-lg text-slate-700 dark:text-slate-200 transition" title="Zobrazit QR kód">
-                        <i data-lucide="qr-code" class="w-5 h-5"></i>
+                    <button id="closePresBtn" class="bg-rose-600 hover:bg-rose-700 text-white font-semibold px-4 py-2 rounded-xl transition text-sm">
+                        Ukončit prezentaci
                     </button>
-                </div>
-
-                <div class="flex items-center space-x-2">
-                    <span id="presCount" class="text-xs px-2.5 py-1.5 bg-slate-100 dark:bg-slate-700 rounded-lg text-slate-600 dark:text-slate-300 font-medium">Účastníci: 0</span>
-
-                    <!-- Tlačítko Stáhnout kompletní PDF -->
-                    <button onclick="downloadAllResultsPDF()" class="px-3 py-1.5 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 rounded-lg text-xs font-semibold flex items-center space-x-1 transition" title="Stáhnout všechny výsledky do PDF">
-                        <i data-lucide="file-text" class="w-4 h-4 text-red-500"></i>
-                        <span>Stáhnout PDF</span>
-                    </button>
-
-                    <button id="toggleHideResultsBtn" onclick="toggleHideResults()" class="px-3 py-1.5 bg-sky-600 hover:bg-sky-700 text-white rounded-lg text-xs font-semibold flex items-center space-x-1 transition shadow">
-                        <i data-lucide="eye" id="hideIcon" class="w-4 h-4"></i>
-                        <span id="hideText">Odkrýt výsledky</span>
-                    </button>
-
-                    <div class="flex space-x-1 pl-2 border-l border-slate-200 dark:border-slate-700">
-                        <button onclick="prevPresQuestion()" class="p-2 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 rounded-lg"><i data-lucide="chevron-left" class="w-5 h-5"></i></button>
-                        <button onclick="nextPresQuestion()" class="p-2 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 rounded-lg"><i data-lucide="chevron-right" class="w-5 h-5"></i></button>
-                    </div>
-
-                    <button onclick="closePresentation()" class="px-3 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-medium transition">Ukončit</button>
                 </div>
             </div>
 
-            <!-- Hlavní Plátno -->
-            <div id="presentationCanvas" class="bg-white dark:bg-slate-800 p-8 rounded-xl shadow-lg border border-slate-200 dark:border-slate-700 min-h-[420px] flex flex-col justify-between relative overflow-hidden">
-                <div id="introSlide" class="flex flex-col items-center justify-center text-center py-6 space-y-6 my-auto">
-                    <h1 class="text-3xl md:text-4xl font-extrabold text-slate-800 dark:text-white">Připojte se k hlasování</h1>
-                    
-                    <div class="flex flex-col md:flex-row items-center justify-center gap-8 my-4">
-                        <div class="bg-white p-4 rounded-2xl shadow-md border border-slate-200 flex flex-col items-center">
-                            <div id="introQrCode" class="p-2"></div>
-                            <span class="text-xs text-slate-400 mt-2">Naskenujte pro přímé připojení</span>
-                        </div>
-
-                        <div class="flex flex-col items-center md:items-start space-y-3">
-                            <div class="text-left">
-                                <span class="text-sm text-slate-400 uppercase tracking-wider">1. OTEVŘETE V MOBILU</span>
-                                <p id="introFullUrl" class="text-xl font-bold text-sky-600 font-mono">1url.cz/@hlasujto</p>
-                            </div>
-                            <div class="text-left">
-                                <span class="text-sm text-slate-400 uppercase tracking-wider">2. ZADEJTE KÓD MÍSTNOSTI</span>
-                                <p id="introPinDisplay" class="text-5xl font-black text-sky-600 font-mono tracking-widest"></p>
-                            </div>
-                        </div>
-                    </div>
-
-                    <button onclick="nextPresQuestion()" class="px-6 py-3 bg-sky-600 hover:bg-sky-700 text-white font-bold rounded-xl shadow transition flex items-center space-x-2 text-lg">
-                        <span>Začít první otázku</span>
-                        <i data-lucide="arrow-right" class="w-5 h-5"></i>
-                    </button>
+            <div class="flex-1 flex flex-col justify-center max-w-4xl mx-auto w-full py-8 space-y-6">
+                <div class="text-center space-y-2">
+                    <span id="presQIndex" class="text-sm font-semibold text-slate-400">Otázka 1/5</span>
+                    <h1 id="presQText" class="text-3xl font-extrabold text-slate-100"> Načítání otázky...</h1>
                 </div>
 
-                <div id="questionSlide" class="hidden flex-grow flex flex-col justify-between">
-                    <h1 id="presQuestionTitle" class="text-2xl md:text-3xl font-bold text-center mb-4"></h1>
-                    
-                    <div id="presImageContainer" class="hidden text-center mb-6">
-                        <img id="presQuestionImage" src="" alt="Obrázek" class="max-h-64 mx-auto rounded-xl border border-slate-200 dark:border-slate-700 object-contain shadow-sm">
-                    </div>
+                <!-- Živé výsledky přímo v prezentaci -->
+                <div id="presLiveChartContainer" class="bg-slate-900/80 p-6 rounded-2xl border border-slate-800 h-80 relative">
+                    <canvas id="livePresChart"></canvas>
+                </div>
 
-                    <div id="presResultsContainer" class="flex-grow flex items-center justify-center"></div>
+                <div class="flex justify-between items-center pt-4">
+                    <button id="prevQBtn" class="bg-slate-800 hover:bg-slate-700 px-5 py-2.5 rounded-xl text-sm font-semibold transition">← Předchozí</button>
+                    <button id="nextQBtn" class="bg-sky-600 hover:bg-sky-500 px-5 py-2.5 rounded-xl text-sm font-semibold transition">Další →</button>
                 </div>
             </div>
-        </div>
-
-        <!-- Skrytý kontejner pouze pro sestavení PDF reportu -->
-        <div id="pdfExportContainer" class="hidden bg-white p-8 text-slate-900 space-y-8"></div>
+        </section>
 
     </main>
 
-    <!-- Modální okna -->
-    <div id="qrModal" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-        <div class="bg-white dark:bg-slate-800 w-full max-w-sm p-6 rounded-2xl shadow-xl flex flex-col items-center text-center space-y-4">
-            <h3 class="text-lg font-bold">Připojení k hlasování</h3>
-            <div id="modalQrCode" class="bg-white p-3 rounded-xl border border-slate-200"></div>
-            <div>
-                <p class="text-xs text-slate-400">PIN KÓD</p>
-                <p id="modalPinDisplay" class="text-3xl font-black text-sky-600 font-mono tracking-wider"></p>
-            </div>
-            <button onclick="closeQrModal()" class="w-full py-2 bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-200 font-medium rounded-lg hover:bg-slate-300">Zavřít</button>
-        </div>
-    </div>
-
-    <!-- Modální okno pro Výsledky / Grafy -->
-    <div id="resultsModal" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-        <div class="bg-white dark:bg-slate-800 w-full max-w-2xl p-6 rounded-2xl shadow-xl space-y-4 relative max-h-[90vh] flex flex-col">
+    <!-- MODÁLNÍ OKNO: VYTVOŘENÍ / EDITACE SADY -->
+    <div id="createModal" class="hidden fixed inset-0 z-40 bg-slate-950/60 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
+        <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl max-w-2xl w-full p-6 space-y-6 border border-slate-200 dark:border-slate-700">
             <div class="flex justify-between items-center border-b border-slate-200 dark:border-slate-700 pb-3">
-                <h3 id="modalResultsTitle" class="text-lg font-bold truncate pr-4">Výsledky hlasování</h3>
-                <button onclick="closeResultsModal()" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
-                    <i data-lucide="x" class="w-5 h-5"></i>
-                </button>
+                <h3 class="text-xl font-bold">Vytvořit novou sadu otázek</h3>
+                <button id="closeCreateCrossBtn" class="text-slate-400 hover:text-slate-600 text-xl font-bold">&times;</button>
             </div>
-            <div id="modalResultsContent" class="overflow-y-auto flex-grow space-y-6 pr-1"></div>
-            <div class="pt-3 border-t border-slate-200 dark:border-slate-700 flex justify-end">
-                <button onclick="closeResultsModal()" class="px-4 py-2 bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-200 font-medium rounded-lg hover:bg-slate-300 transition text-sm">Zavřít</button>
-            </div>
-        </div>
-    </div>
+            
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-xs font-bold uppercase tracking-wider mb-1">Název sady</label>
+                    <input type="text" id="pollTitleInput" placeholder="např. Závěrečný kvíz - Historie" class="w-full p-3 border rounded-xl dark:bg-slate-700 dark:border-slate-600 outline-none focus:ring-2 focus:ring-sky-500">
+                </div>
 
-    <div id="helpModal" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-        <div class="bg-white dark:bg-slate-800 rounded-2xl max-w-md w-full p-6 shadow-xl border border-slate-200 dark:border-slate-700 relative">
-            <button onclick="toggleHelpModal(false)" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
-                <i data-lucide="x" class="w-5 h-5"></i>
-            </button>
-            <div class="flex items-center gap-2 mb-4">
-                <i data-lucide="book-open" class="w-5 h-5 text-sky-600"></i>
-                <h2 class="text-lg font-bold text-slate-900 dark:text-white">Jak Hlasuj.to funguje?</h2>
-            </div>
-            <ol class="space-y-3 text-sm text-slate-600 dark:text-slate-300 mb-6">
-                <li class="flex gap-3"><span class="font-bold text-sky-600 shrink-0">1.</span><span><strong>Vytvořte otázky:</strong> Pomocí editoru připravte znění otázek a možnosti. Sady i výsledky si můžete uložit do cloudu.</span></li>
-                <li class="flex gap-3"><span class="font-bold text-sky-600 shrink-0">2.</span><span><strong>Spusťte prezentaci:</strong> Klikněte na <em>„Spustit prezentaci“</em>. Na plátně se zobrazí QR kód a PIN.</span></li>
-                <li class="flex gap-3"><span class="font-bold text-sky-600 shrink-0">3.</span><span><strong>Připojení žáků:</strong> Žáci naskenují QR kód nebo zadají PIN na svých telefonech a mohou ihned hlasovat.</span></li>
-            </ol>
-            <button onclick="toggleHelpModal(false)" class="w-full py-2.5 bg-sky-600 hover:bg-sky-700 text-white font-medium text-sm rounded-lg transition">Rozumím, pokračovat</button>
-        </div>
-    </div>
-
-    <div id="authModal" class="hidden fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-        <div class="bg-white dark:bg-slate-800 w-full max-w-md p-6 rounded-2xl shadow-xl space-y-4">
-            <div class="flex justify-between items-center">
-                <h3 class="text-lg font-bold">Přihlášení / Registrace</h3>
-                <button onclick="closeAuthModal()" class="text-slate-400 hover:text-slate-600"><i data-lucide="x" class="w-5 h-5"></i></button>
-            </div>
-            <div id="authError" class="hidden p-3 bg-red-100 dark:bg-red-900/40 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 text-sm rounded-lg"></div>
-            <button onclick="loginWithGoogle()" class="w-full py-2.5 border border-slate-300 dark:border-slate-600 rounded-lg flex items-center justify-center space-x-2 hover:bg-slate-50 dark:hover:bg-slate-700 transition font-medium">
-                <svg class="w-5 h-5" viewBox="0 0 24 24">
-                    <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-                    <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-                    <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
-                    <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
-                </svg>
-                <span>Pokračovat přes Google</span>
-            </button>
-            <div class="relative my-4">
-                <div class="absolute inset-0 flex items-center"><div class="w-full border-t border-slate-200 dark:border-slate-700"></div></div>
-                <div class="relative flex justify-center text-xs uppercase"><span class="bg-white dark:bg-slate-800 px-2 text-slate-500">Nebo e-mailem</span></div>
-            </div>
-            <div class="space-y-3">
-                <input type="email" id="authEmail" placeholder="E-mail" class="w-full p-2.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700">
-                <input type="password" id="authPassword" placeholder="Heslo" class="w-full p-2.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700">
-                <div class="flex space-x-2">
-                    <button onclick="loginEmail()" class="w-1/2 py-2 bg-sky-600 text-white rounded-lg font-medium hover:bg-sky-700 transition">Přihlásit</button>
-                    <button onclick="registerEmail()" class="w-1/2 py-2 bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-200 rounded-lg font-medium hover:bg-slate-300 transition">Registrovat</button>
+                <div class="space-y-3">
+                    <label class="block text-xs font-bold uppercase tracking-wider">Otázky</label>
+                    <div id="questionsContainer" class="space-y-4 max-h-80 overflow-y-auto pr-2">
+                        <!-- Otázky se generují sem -->
+                    </div>
+                    <button id="addQBtn" class="w-full border-2 border-dashed border-slate-300 dark:border-slate-600 py-2.5 rounded-xl text-sm font-bold text-sky-600 dark:text-sky-400 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition">
+                        + Přidat další otázku
+                    </button>
                 </div>
             </div>
+
+            <div class="flex justify-end space-x-3 border-t border-slate-200 dark:border-slate-700 pt-4">
+                <button id="closeCreateCancelBtn" class="px-4 py-2 rounded-xl text-sm font-semibold bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 transition">Zrušit</button>
+                <button id="savePollBtn" class="px-5 py-2 bg-sky-600 hover:bg-sky-700 text-white rounded-xl text-sm font-bold transition">Uložit sadu</button>
+            </div>
         </div>
     </div>
 
-    <!-- Aplikační Logika -->
-    <script>
-        const DISPLAY_SHORT_URL = "1url.cz/@hlasujto";
+    <!-- MODÁLNÍ OKNO: DETAILNÍ VÝSLEDKY & EXPORT -->
+    <div id="resultsModal" class="hidden fixed inset-0 z-40 bg-slate-950/60 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
+        <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl max-w-3xl w-full p-6 space-y-6 border border-slate-200 dark:border-slate-700 max-h-[90vh] flex flex-col">
+            <div class="flex justify-between items-center border-b border-slate-200 dark:border-slate-700 pb-3">
+                <div>
+                    <h3 id="modalResultsTitle" class="text-xl font-bold">Výsledky hlasování</h3>
+                    <p class="text-xs text-slate-500">Souhrnný přehled a grafy odpovědí</p>
+                </div>
+                <div class="flex items-center space-x-2">
+                    <button id="exportPdfBtn" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3 py-2 rounded-lg flex items-center space-x-1 shadow transition">
+                        <span>📄 Stáhnout PDF</span>
+                    </button>
+                    <button id="closeResultsCrossBtn" class="text-slate-400 hover:text-slate-600 text-xl font-bold px-2">&times;</button>
+                </div>
+            </div>
 
+            <!-- Obsah výsledků (Vykreslovaný dynamicky) -->
+            <div id="modalResultsContent" class="flex-1 overflow-y-auto space-y-6 pr-2">
+                <!-- Grafy a odpovědi se vloží sem -->
+            </div>
+        </div>
+    </div>
+
+    <!-- FIREBASE & APPLIKAČNÍ LOGIKA -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getAuth, signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+        import { getFirestore, collection, addDoc, doc, updateDoc, deleteDoc, onSnapshot, query, where } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+        // Konfigurace Firebase
+        const firebaseConfig = {
+            apiKey: "AIzaSyDemoConfigOnly_ReplaceWithYours",
+            authDomain: "demo-app.firebaseapp.com",
+            projectId: "demo-app",
+            storageBucket: "demo-app.appspot.com",
+            messagingSenderId: "0000000000",
+            appId: "1:0000000000:web:0000000000"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        // Globální stav
+        window.currentUser = null;
+        let activePolls = [];
+        let currentPoll = null;
         let currentPollId = null;
-        let questions = [
-            {
-                id: "q_1",
-                type: 'mc',
-                text: 'Jaká je vaše nejoblíbenější barva?',
-                options: ['Červená', 'Modrá', 'Zelená', 'Žlutá'],
-                maxResponses: '1',
-                imageUrl: null
-            }
-        ];
         let currentQuestionIndex = 0;
-        let studentCurrentQuestionIndex = 0; 
-        let currentSessionPin = Math.floor(100000 + Math.random() * 900000).toString();
-        let currentUploadedImageBase64 = null;
-        
         let sessionAnswers = [];
-        let participantsCount = 0;
-        let resultsHidden = true;
-        let paceMode = 'teacher'; 
-        let currentStudentName = '';
-        let activeStudentQuestion = null;
         let activeCharts = [];
+        let liveChartInstance = null;
 
-        lucide.createIcons();
+        // BINDING EVENT LISTENERS & PROPOJENÍ S WINDOW
+        document.getElementById('loginBtn').addEventListener('click', () => {
+            const provider = new GoogleAuthProvider();
+            signInWithPopup(auth, provider).catch(err => console.error("Chyba přihlášení:", err));
+        });
 
-        function toggleDarkMode() { document.documentElement.classList.toggle('dark'); }
-        function toggleHelpModal(show) { document.getElementById('helpModal').classList.toggle('hidden', !show); }
+        document.getElementById('logoutBtn').addEventListener('click', () => signOut(auth));
+        document.getElementById('openCreateBtn').addEventListener('click', openCreateModal);
+        document.getElementById('closeCreateCrossBtn').addEventListener('click', closeCreateModal);
+        document.getElementById('closeCreateCancelBtn').addEventListener('click', closeCreateModal);
+        document.getElementById('addQBtn').addEventListener('click', addQuestionField);
+        document.getElementById('savePollBtn').addEventListener('click', savePoll);
+        document.getElementById('closePresBtn').addEventListener('click', closePresentation);
+        document.getElementById('prevQBtn').addEventListener('click', prevQuestion);
+        document.getElementById('nextQBtn').addEventListener('click', nextQuestion);
+        document.getElementById('closeResultsCrossBtn').addEventListener('click', closeResultsModal);
+        document.getElementById('exportPdfBtn').addEventListener('click', exportModalToPDF);
 
-        function showTeacherView() {
-            document.getElementById('studentView').classList.add('hidden');
+        // Zpřístupnění dynamických funkcí pro tlačítka v generovaných kartách
+        window.startPresentation = (pollId) => {
+            currentPoll = activePolls.find(p => p.id === pollId);
+            if (!currentPoll) return;
+            currentPollId = pollId;
+            currentQuestionIndex = 0;
+            sessionAnswers = [];
+
+            document.getElementById('presTitle').innerText = currentPoll.title;
+            document.getElementById('presPin').innerText = Math.floor(100000 + Math.random() * 900000);
+            
+            document.getElementById('teacherView').classList.add('hidden');
+            document.getElementById('presentationView').classList.remove('hidden');
+
+            renderCurrentPresQuestion();
+        };
+
+        window.viewResults = (pollId) => {
+            const poll = activePolls.find(p => p.id === pollId);
+            if (!poll) return;
+            openResultsModal(poll.title, poll.questions, poll.savedAnswers || []);
+        };
+
+        window.deletePoll = async (pollId) => {
+            if (confirm("Opravdu chcete tuto sadu smazat?")) {
+                try {
+                    await deleteDoc(doc(db, "polls", pollId));
+                } catch (e) {
+                    console.error("Chyba při mazání:", e);
+                }
+            }
+        };
+
+        // STAV AUTENTIZACE
+        onAuthStateChanged(auth, (user) => {
+            window.currentUser = user;
+            const loginBtn = document.getElementById('loginBtn');
+            const userInfo = document.getElementById('userInfo');
+
+            if (user) {
+                loginBtn.classList.add('hidden');
+                userInfo.classList.remove('hidden');
+                document.getElementById('userName').innerText = user.displayName || user.email;
+                document.getElementById('userAvatar').src = user.photoURL || 'https://via.placeholder.com/32';
+                loadUserPolls();
+            } else {
+                loginBtn.classList.remove('hidden');
+                userInfo.classList.add('hidden');
+                document.getElementById('pollsGrid').innerHTML = `
+                    <div class="col-span-full text-center py-12 text-slate-500">
+                        Pro zobrazení a správu svých hlasování se prosím přihlaste.
+                    </div>
+                `;
+            }
+        });
+
+        // REÁLNÁ DATA POLLŮ
+        function loadUserPolls() {
+            if (!window.currentUser) return;
+            const q = query(collection(db, "polls"), where("userId", "==", window.currentUser.uid));
+            onSnapshot(q, (snapshot) => {
+                activePolls = [];
+                snapshot.forEach(doc => {
+                    activePolls.push({ id: doc.id, ...doc.data() });
+                });
+                renderPollsGrid();
+            });
+        }
+
+        function renderPollsGrid() {
+            const grid = document.getElementById('pollsGrid');
+            grid.innerHTML = '';
+
+            if (activePolls.length === 0) {
+                grid.innerHTML = `<div class="col-span-full text-center py-10 text-slate-400">Zatím nemáte žádné sady otázek. Vytvořte první!</div>`;
+                return;
+            }
+
+            activePolls.forEach(poll => {
+                const totalRespondents = calculateUniqueParticipants(poll.savedAnswers || []);
+                const card = document.createElement('div');
+                card.className = "bg-white dark:bg-slate-800 p-5 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 flex flex-col justify-between space-y-4 hover:shadow-md transition";
+                card.innerHTML = `
+                    <div>
+                        <div class="flex justify-between items-start mb-2">
+                            <h3 class="font-bold text-lg text-slate-800 dark:text-slate-100">${poll.title}</h3>
+                            <span class="text-xs px-2.5 py-1 bg-slate-100 dark:bg-slate-700 rounded-full font-medium text-slate-600 dark:text-slate-300">
+                                ${poll.questions ? poll.questions.length : 0} otázek
+                            </span>
+                        </div>
+                        <p class="text-xs text-slate-500">Unikátní respondenti: <strong class="text-sky-600 dark:text-sky-400">${totalRespondents}</strong></p>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-2 pt-2 border-t border-slate-100 dark:border-slate-700/50">
+                        <button onclick="window.startPresentation('${poll.id}')" class="bg-sky-600 hover:bg-sky-700 text-white text-xs font-bold py-2 rounded-xl transition col-span-2">
+                            ▶ Spustit prezentaci
+                        </button>
+                        <button onclick="window.viewResults('${poll.id}')" class="bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 text-xs font-bold py-2 rounded-xl transition">
+                            📊 Výsledky
+                        </button>
+                        <button onclick="window.deletePoll('${poll.id}')" class="bg-rose-50 dark:bg-rose-950/30 hover:bg-rose-100 text-rose-600 text-xs font-bold py-2 rounded-xl transition">
+                            Smazat
+                        </button>
+                    </div>
+                `;
+                grid.appendChild(card);
+            });
+        }
+
+        function calculateUniqueParticipants(answers) {
+            if (!answers || !Array.isArray(answers)) return 0;
+            const unique = new Set(answers.map(a => a.student || a.participantId).filter(Boolean));
+            return unique.size;
+        }
+
+        // PREZENTACE (ODSTRANĚNO POČÍTADLO ODPOVĚDÍ)
+        function renderCurrentPresQuestion() {
+            const q = currentPoll.questions[currentQuestionIndex];
+            document.getElementById('presQIndex').innerText = `Otázka ${currentQuestionIndex + 1} z ${currentPoll.questions.length}`;
+            document.getElementById('presQText').innerText = q.text;
+
+            renderLiveChart(q);
+        }
+
+        function renderLiveChart(question) {
+            const ctx = document.getElementById('livePresChart');
+            if (liveChartInstance) liveChartInstance.destroy();
+
+            const answersForQ = sessionAnswers.filter(a => String(a.questionId) === String(question.id));
+            const labels = question.options || ['Odpovědi'];
+            const counts = labels.map(opt => answersForQ.filter(a => a.answer === opt).length);
+
+            liveChartInstance = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Hlasy',
+                        data: counts,
+                        backgroundColor: '#0284c7',
+                        borderRadius: 8
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: { y: { beginAtZero: true, ticks: { stepSize: 1, color: '#94a3b8' }, grid: { color: '#334155' } }, x: { ticks: { color: '#94a3b8' } } }
+                }
+            });
+        }
+
+        function nextQuestion() {
+            if (currentQuestionIndex < currentPoll.questions.length - 1) {
+                currentQuestionIndex++;
+                renderCurrentPresQuestion();
+            }
+        }
+
+        function prevQuestion() {
+            if (currentQuestionIndex > 0) {
+                currentQuestionIndex--;
+                renderCurrentPresQuestion();
+            }
+        }
+
+        async function closePresentation() {
             document.getElementById('presentationView').classList.add('hidden');
             document.getElementById('teacherView').classList.remove('hidden');
-        }
 
-        function showStudentView() {
-            document.getElementById('teacherView').classList.add('hidden');
-            document.getElementById('presentationView').classList.add('hidden');
-            document.getElementById('studentView').classList.remove('hidden');
-        }
-
-        function handleImageUpload(e) {
-            const file = e.target.files[0];
-            if (!file) return;
-
-            const reader = new FileReader();
-            reader.onload = function(event) {
-                const img = new Image();
-                img.onload = function() {
-                    const canvas = document.createElement('canvas');
-                    let width = img.width;
-                    let height = img.height;
-                    const maxDim = 800;
-
-                    if (width > height && width > maxDim) {
-                        height *= maxDim / width;
-                        width = maxDim;
-                    } else if (height > maxDim) {
-                        height *= maxDim / height;
-                        width = maxDim;
-                    }
-
-                    canvas.width = width;
-                    canvas.height = height;
-                    const ctx = canvas.getContext('2d');
-                    ctx.drawImage(img, 0, 0, width, height);
-
-                    currentUploadedImageBase64 = canvas.toDataURL('image/jpeg', 0.7);
-                    showImagePreview(currentUploadedImageBase64);
-                };
-                img.src = event.target.result;
-            };
-            reader.readAsDataURL(file);
-        }
-
-        function showImagePreview(src) {
-            const container = document.getElementById('imagePreviewContainer');
-            const img = document.getElementById('imagePreview');
-            const removeBtn = document.getElementById('removeImgBtn');
-            if (src) {
-                img.src = src;
-                container.classList.remove('hidden');
-                removeBtn.classList.remove('hidden');
-            } else {
-                img.src = '';
-                container.classList.add('hidden');
-                removeBtn.classList.add('hidden');
-                document.getElementById('imageFileInput').value = '';
+            if (currentPollId && window.currentUser && sessionAnswers.length > 0) {
+                try {
+                    const existingAnswers = currentPoll.savedAnswers || [];
+                    const updatedAnswers = [...existingAnswers, ...sessionAnswers];
+                    
+                    await updateDoc(doc(db, "polls", currentPollId), {
+                        savedAnswers: updatedAnswers,
+                        updatedAt: Date.now()
+                    });
+                    loadUserPolls();
+                } catch (e) {
+                    console.error("Chyba při ukládání finálních výsledků:", e);
+                }
             }
+            currentQuestionIndex = 0;
         }
 
-        function removeQuestionImage() {
-            currentUploadedImageBase64 = null;
-            showImagePreview(null);
-        }
-
-        // --- VYPOČÍTÁNÍ UNIKÁTNÍCH RESPONDENTŮ ---
-        function calculateUniqueParticipants(answersList) {
-            if (!answersList || !Array.isArray(answersList)) return 0;
-            const uniqueStudents = new Set(answersList.map(a => a.student).filter(Boolean));
-            return uniqueStudents.size;
-        }
-
-        // --- ZOBRAZENÍ VÝSLEDKŮ V MODÁLNÍM OKNĚ S CHART.JS ---
+        // VÝSLEDKY & MODAL
         function openResultsModal(title, pollQuestions, savedAnswers) {
             const modal = document.getElementById('resultsModal');
             const titleEl = document.getElementById('modalResultsTitle');
             const contentEl = document.getElementById('modalResultsContent');
 
+            modal.classList.remove('hidden');
+
             titleEl.innerText = `Výsledky: ${title}`;
             contentEl.innerHTML = '';
 
-            // Vyčištění existujících grafů
             activeCharts.forEach(chart => chart.destroy());
             activeCharts = [];
 
@@ -583,7 +444,7 @@
             const overviewDiv = document.createElement('div');
             overviewDiv.className = "bg-sky-50 dark:bg-sky-950/40 border border-sky-200 dark:border-sky-800 p-3.5 rounded-xl text-sm flex justify-between items-center";
             overviewDiv.innerHTML = `
-                <span class="font-medium text-sky-900 dark:text-sky-200">Unikátní respondenti:</span>
+                <span class="font-medium text-sky-900 dark:text-sky-200">Unikátní respondenti celkem:</span>
                 <span class="font-bold text-sky-700 dark:text-sky-400 text-base">${totalRespondents}</span>
             `;
             contentEl.appendChild(overviewDiv);
@@ -595,14 +456,15 @@
                 let qHtml = `<h4 class="font-bold text-base text-slate-800 dark:text-slate-100">${idx + 1}. ${q.text}</h4>`;
                 const filteredAnswers = (savedAnswers || []).filter(a => String(a.questionId) === String(q.id));
 
-                if (q.type === 'mc') {
+                if (q.type === 'mc' || q.type === 'rating') {
                     const canvasId = `modal_chart_${idx}`;
-                    qHtml += `<div class="max-w-md mx-auto my-2"><canvas id="${canvasId}" class="max-h-56"></canvas></div>`;
+                    qHtml += `<div class="max-w-md mx-auto my-2 w-full"><canvas id="${canvasId}" class="max-h-56"></canvas></div>`;
                     qBox.innerHTML = qHtml;
                     contentEl.appendChild(qBox);
 
-                    const counts = {};
-                    (q.options || []).forEach(opt => counts[opt] = 0);
+                    const counts = q.type === 'rating' ? { '1': 0, '2': 0, '3': 0, '4': 0, '5': 0 } : {};
+                    if (q.type === 'mc') (q.options || []).forEach(opt => counts[opt] = 0);
+                    
                     filteredAnswers.forEach(a => { if (counts[a.answer] !== undefined) counts[a.answer]++; });
 
                     setTimeout(() => {
@@ -611,56 +473,24 @@
                             const newChart = new Chart(ctx, {
                                 type: 'bar',
                                 data: {
-                                    labels: Object.keys(counts),
+                                    labels: q.type === 'rating' ? ['1 ★', '2 ★', '3 ★', '4 ★', '5 ★'] : Object.keys(counts),
                                     datasets: [{
-                                        label: 'Počet hlasů',
+                                        label: q.type === 'rating' ? 'Hodnocení' : 'Počet hlasů',
                                         data: Object.values(counts),
-                                        backgroundColor: '#0284c7',
+                                        backgroundColor: q.type === 'rating' ? '#f59e0b' : '#0284c7',
                                         borderRadius: 6
                                     }]
                                 },
                                 options: {
                                     responsive: true,
+                                    maintainAspectRatio: false,
                                     plugins: { legend: { display: false } },
                                     scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } }
                                 }
                             });
                             activeCharts.push(newChart);
                         }
-                    }, 50);
-
-                } else if (q.type === 'rating') {
-                    const canvasId = `modal_chart_${idx}`;
-                    qHtml += `<div class="max-w-md mx-auto my-2"><canvas id="${canvasId}" class="max-h-56"></canvas></div>`;
-                    qBox.innerHTML = qHtml;
-                    contentEl.appendChild(qBox);
-
-                    const counts = { '1': 0, '2': 0, '3': 0, '4': 0, '5': 0 };
-                    filteredAnswers.forEach(a => { if (counts[a.answer] !== undefined) counts[a.answer]++; });
-
-                    setTimeout(() => {
-                        const ctx = document.getElementById(canvasId);
-                        if (ctx) {
-                            const newChart = new Chart(ctx, {
-                                type: 'bar',
-                                data: {
-                                    labels: ['1 ★', '2 ★', '3 ★', '4 ★', '5 ★'],
-                                    datasets: [{
-                                        label: 'Hodnocení',
-                                        data: Object.values(counts),
-                                        backgroundColor: '#f59e0b',
-                                        borderRadius: 6
-                                    }]
-                                },
-                                options: {
-                                    responsive: true,
-                                    plugins: { legend: { display: false } },
-                                    scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } }
-                                }
-                            });
-                            activeCharts.push(newChart);
-                        }
-                    }, 50);
+                    }, 100);
 
                 } else if (q.type === 'cloud') {
                     const wordCounts = {};
@@ -696,1014 +526,97 @@
                     contentEl.appendChild(qBox);
                 }
             });
-
-            modal.classList.remove('hidden');
         }
 
         function closeResultsModal() {
             document.getElementById('resultsModal').classList.add('hidden');
-            activeCharts.forEach(chart => chart.destroy());
-            activeCharts = [];
         }
 
-        // --- EXPORT VŠECH OTÁZEK A VÝSLEDKŮ DO PDF ---
-        function downloadAllResultsPDF(customTitle = null, customQuestions = null, customAnswers = null) {
-            const title = customTitle || document.getElementById('pollTitleInput').value.trim() || 'vysledky_hlasovani';
-            const pollQuestions = customQuestions || questions;
-            const pollAnswers = customAnswers || sessionAnswers;
-
-            const pdfContainer = document.getElementById('pdfExportContainer');
-            pdfContainer.innerHTML = '';
-
-            const uniqueCount = calculateUniqueParticipants(pollAnswers);
-
-            const header = document.createElement('div');
-            header.className = "border-b border-slate-300 pb-4 mb-6";
-            header.innerHTML = `
-                <h1 class="text-2xl font-bold text-sky-600">${title}</h1>
-                <p class="text-sm text-slate-500">Vygenerováno z Hlasuj.to | Celkem unikátních respondentů: ${uniqueCount}</p>
-            `;
-            pdfContainer.appendChild(header);
-
-            pollQuestions.forEach((q, idx) => {
-                const qBox = document.createElement('div');
-                qBox.className = "mb-8 p-4 border border-slate-200 rounded-xl bg-slate-50";
-
-                let qHtml = `<h2 class="text-lg font-bold mb-3">${idx + 1}. ${q.text}</h2>`;
-
-                if (q.imageUrl) {
-                    qHtml += `<div class="mb-4"><img src="${q.imageUrl}" class="max-h-40 rounded border border-slate-300"></div>`;
-                }
-
-                const filteredAnswers = pollAnswers.filter(a => String(a.questionId) === String(q.id));
-
-                if (q.type === 'mc') {
-                    const counts = {};
-                    filteredAnswers.forEach(a => { counts[a.answer] = (counts[a.answer] || 0) + 1; });
-                    const total = filteredAnswers.length;
-
-                    qHtml += `<div class="space-y-2">`;
-                    (q.options || []).forEach(opt => {
-                        const count = counts[opt] || 0;
-                        const percent = total > 0 ? Math.round((count / total) * 100) : 0;
-                        qHtml += `
-                            <div>
-                                <div class="flex justify-between text-xs font-semibold mb-1">
-                                    <span>${opt}</span>
-                                    <span>${count} (${percent}%)</span>
-                                </div>
-                                <div class="w-full bg-slate-200 h-3 rounded-full overflow-hidden">
-                                    <div class="bg-sky-600 h-full rounded-full" style="width: ${percent}%"></div>
-                                </div>
-                            </div>
-                        `;
-                    });
-                    qHtml += `</div>`;
-                } else if (q.type === 'cloud') {
-                    const wordCounts = {};
-                    filteredAnswers.forEach(a => {
-                        const word = String(a.answer).trim();
-                        if (word) wordCounts[word] = (wordCounts[word] || 0) + 1;
-                    });
-
-                    const palette = ['#0284c7', '#059669', '#d97706', '#dc2626', '#7c3aed', '#db2777', '#0891b2', '#ea580c'];
-
-                    qHtml += `<div class="flex flex-wrap gap-2">`;
-                    Object.entries(wordCounts).forEach(([word, count], i) => {
-                        const color = palette[i % palette.length];
-                        qHtml += `<span class="px-2.5 py-1 rounded-lg text-sm font-bold bg-slate-100 border border-slate-200" style="color: ${color}">${word} (${count}x)</span>`;
-                    });
-                    if (Object.keys(wordCounts).length === 0) qHtml += `<span class="text-xs text-slate-400">Žádné odpovědi</span>`;
-                    qHtml += `</div>`;
-                } else if (q.type === 'rating') {
-                    const vals = filteredAnswers.map(a => Number(a.answer)).filter(n => !isNaN(n));
-                    const avg = vals.length ? (vals.reduce((a,b)=>a+b,0)/vals.length).toFixed(1) : '0';
-                    qHtml += `<div class="text-xl font-bold text-amber-600">Průměrné hodnocení: ${avg} / 5 <span class="text-xs text-slate-500 font-normal">(${vals.length} hlasů)</span></div>`;
-                } else {
-                    qHtml += `<div class="grid grid-cols-2 gap-2">`;
-                    filteredAnswers.forEach(a => {
-                        qHtml += `<div class="p-2 bg-white border border-slate-200 rounded text-xs"><strong>${a.student || 'Účastník'}:</strong> ${a.answer}</div>`;
-                    });
-                    if (filteredAnswers.length === 0) qHtml += `<span class="text-xs text-slate-400">Žádné odpovědi</span>`;
-                    qHtml += `</div>`;
-                }
-
-                qBox.innerHTML = qHtml;
-                pdfContainer.appendChild(qBox);
-            });
-
-            pdfContainer.classList.remove('hidden');
-
+        function exportModalToPDF() {
+            const element = document.getElementById('modalResultsContent');
             const opt = {
-                margin:       10,
-                filename:     `${title.toLowerCase().replace(/\s+/g, '_')}_vysledky.pdf`,
+                margin:       0.5,
+                filename:     'vysledky-hlasovani.pdf',
                 image:        { type: 'jpeg', quality: 0.98 },
-                html2canvas:  { scale: 2, useCORS: true },
-                jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+                html2canvas:  { scale: 2 },
+                jsPDF:        { unit: 'in', format: 'letter', orientation: 'portrait' }
             };
-
-            html2pdf().set(opt).from(pdfContainer).save().then(() => {
-                pdfContainer.classList.add('hidden');
-            });
+            html2pdf().set(opt).from(element).save();
         }
 
-        // --- CLOUD FIREBASE (UKLÁDÁNÍ OTÁZEK I ODPOVĚDÍ) ---
-        async function saveCurrentPollToCloud() {
-            if (!window.currentUser) {
-                alert("Pro ukládání hlasování se prosím nejprve přihlaste.");
-                openAuthModal();
-                return;
-            }
-
-            saveQuestion();
-
-            const title = document.getElementById('pollTitleInput').value.trim() || 'Bez názvu';
-            const { collection, addDoc, doc, setDoc } = window.fbModules;
-
-            const pollData = {
-                uid: window.currentUser.uid,
-                title: title,
-                questions: questions,
-                paceMode: paceMode,
-                savedAnswers: sessionAnswers,
-                updatedAt: Date.now()
-            };
-
-            try {
-                if (currentPollId) {
-                    await setDoc(doc(window.db, "polls", currentPollId), pollData, { merge: true });
-                } else {
-                    const docRef = await addDoc(collection(window.db, "polls"), pollData);
-                    currentPollId = docRef.id;
-                }
-                alert("Sada otázek i s výsledky byla úspěšně uložena do cloudu!");
-                loadUserPolls();
-            } catch (err) {
-                console.error("Chyba při ukládání:", err);
-                alert("Chyba při ukládání do cloudu.");
-            }
+        // VYTVÁŘENÍ SAK
+        function openCreateModal() {
+            document.getElementById('questionsContainer').innerHTML = '';
+            document.getElementById('pollTitleInput').value = '';
+            addQuestionField();
+            document.getElementById('createModal').classList.remove('hidden');
         }
 
-        async function loadUserPolls() {
-            const container = document.getElementById('savedPollsContainer');
-            if (!container) return;
-
-            if (!window.currentUser) {
-                container.innerHTML = `<p class="text-sm text-slate-400 col-span-full py-2">Pro zobrazení uložených hlasování se prosím přihlaste.</p>`;
-                return;
-            }
-
-            const { collection, query, where, getDocs } = window.fbModules;
-            try {
-                const q = query(collection(window.db, "polls"), where("uid", "==", window.currentUser.uid));
-                const querySnapshot = await getDocs(q);
-
-                if (querySnapshot.empty) {
-                    container.innerHTML = `<p class="text-sm text-slate-400 col-span-full py-2">Zatím nemáte žádná uložená hlasování.</p>`;
-                    return;
-                }
-
-                container.innerHTML = '';
-                querySnapshot.forEach((docSnap) => {
-                    const p = docSnap.data();
-                    const pollId = docSnap.id;
-                    const answersCount = p.savedAnswers ? p.savedAnswers.length : 0;
-                    const respondentsCount = calculateUniqueParticipants(p.savedAnswers);
-
-                    const card = document.createElement('div');
-                    card.className = "p-3 bg-slate-50 dark:bg-slate-700/50 rounded-lg border border-slate-200 dark:border-slate-600 flex flex-col justify-between space-y-2";
-                    card.innerHTML = `
-                        <div>
-                            <div class="font-bold text-sm text-slate-800 dark:text-slate-100 truncate">${p.title}</div>
-                            <div class="text-xs text-slate-400">${p.questions ? p.questions.length : 0} otázek | ${respondentsCount} respondentů (${answersCount} odp.)</div>
-                        </div>
-                        <div class="flex flex-wrap items-center gap-1 pt-1 border-t border-slate-200 dark:border-slate-600">
-                            <button onclick="openPollFromCloud('${pollId}', '${p.title.replace(/'/g, "\\'")}')" class="px-2 py-1 bg-sky-600 text-white rounded text-xs hover:bg-sky-700 transition">Otevřít</button>
-                            <button onclick="viewResultsFromCloud('${pollId}')" class="px-2 py-1 bg-emerald-600 text-white text-xs rounded hover:bg-emerald-700 transition flex items-center gap-1">📊 Výsledky</button>
-                            <button onclick="downloadPdfFromCloud('${pollId}')" class="px-2 py-1 bg-red-600 text-white text-xs rounded hover:bg-red-700 transition flex items-center gap-1">📄 PDF</button>
-                            <button onclick="duplicatePollFromCloud('${pollId}')" class="px-2 py-1 bg-slate-200 dark:bg-slate-600 text-xs rounded hover:bg-slate-300 transition">Duplikovat</button>
-                            <button onclick="deletePollFromCloud('${pollId}')" class="px-2 py-1 text-red-500 hover:text-red-700 text-xs transition ml-auto"><i data-lucide="trash-2" class="w-3.5 h-3.5"></i></button>
-                        </div>
-                    `;
-                    container.appendChild(card);
-                });
-                lucide.createIcons();
-            } catch (err) {
-                console.error("Chyba při načítání hlasování:", err);
-            }
+        function closeCreateModal() {
+            document.getElementById('createModal').classList.add('hidden');
         }
 
-        async function viewResultsFromCloud(pollId) {
-            const { doc, getDoc } = window.fbModules;
-            try {
-                const pollDoc = await getDoc(doc(window.db, "polls", pollId));
-                if (pollDoc.exists()) {
-                    const data = pollDoc.data();
-                    openResultsModal(data.title, data.questions || [], data.savedAnswers || []);
-                }
-            } catch (e) {
-                console.error("Chyba zobrazení výsledků:", e);
-            }
-        }
-
-        async function downloadPdfFromCloud(pollId) {
-            const { doc, getDoc } = window.fbModules;
-            try {
-                const pollDoc = await getDoc(doc(window.db, "polls", pollId));
-                if (pollDoc.exists()) {
-                    const data = pollDoc.data();
-                    downloadAllResultsPDF(data.title, data.questions || [], data.savedAnswers || []);
-                }
-            } catch (e) {
-                console.error("Chyba při generování PDF z cloudu:", e);
-            }
-        }
-
-        async function openPollFromCloud(pollId, title) {
-            const { doc, getDoc } = window.fbModules;
-            try {
-                const pollDoc = await getDoc(doc(window.db, "polls", pollId));
-                if (pollDoc.exists()) {
-                    const data = pollDoc.data();
-                    questions = data.questions || [];
-                    sessionAnswers = data.savedAnswers || [];
-                    currentPollId = pollDoc.id;
-                    paceMode = data.paceMode || 'teacher';
-                    document.getElementById('paceModePrepSelect').value = paceMode;
-                    document.getElementById('pollTitleInput').value = data.title || title;
-                    currentQuestionIndex = 0;
-                    renderQuestionsList();
-                    loadCurrentQuestionToEditor();
-                    alert(`Načtena sada a uložené výsledky: ${data.title}`);
-                }
-            } catch (e) {
-                console.error("Chyba při otevírání:", e);
-            }
-        }
-
-        async function duplicatePollFromCloud(pollId) {
-            if (!window.currentUser) return;
-            const { doc, getDoc, collection, addDoc } = window.fbModules;
-            try {
-                const pollDoc = await getDoc(doc(window.db, "polls", pollId));
-                if (pollDoc.exists()) {
-                    const data = pollDoc.data();
-                    const newPoll = {
-                        uid: window.currentUser.uid,
-                        title: `Kopie: ${data.title}`,
-                        questions: data.questions,
-                        paceMode: data.paceMode || 'teacher',
-                        savedAnswers: [],
-                        updatedAt: Date.now()
-                    };
-                    await addDoc(collection(window.db, "polls"), newPoll);
-                    alert("Kopie byla úspěšně vytvořena!");
-                    loadUserPolls();
-                }
-            } catch (e) {
-                console.error("Chyba duplikace:", e);
-            }
-        }
-
-        async function deletePollFromCloud(pollId) {
-            if (!confirm("Opravdu chcete tuto sadu hlasování smazat?")) return;
-            const { doc, deleteDoc } = window.fbModules;
-            try {
-                await deleteDoc(doc(window.db, "polls", pollId));
-                if (currentPollId === pollId) currentPollId = null;
-                loadUserPolls();
-            } catch (e) {
-                console.error("Chyba při mazání:", e);
-            }
-        }
-
-        window.loadUserPolls = loadUserPolls;
-
-        // --- EDITOR OTÁZEK ---
-        function changeQuestionType() {
-            const type = document.getElementById('questionType').value;
-            const mcArea = document.getElementById('mcOptionsArea');
-            const maxResponsesArea = document.getElementById('maxResponsesArea');
-
-            if (type === 'mc') {
-                mcArea.classList.remove('hidden');
-                maxResponsesArea.classList.add('hidden');
-            } else if (type === 'cloud' || type === 'open') {
-                mcArea.classList.add('hidden');
-                maxResponsesArea.classList.remove('hidden');
-            } else {
-                mcArea.classList.add('hidden');
-                maxResponsesArea.classList.add('hidden');
-            }
-        }
-
-        function renderOptionsInputs(options = ['Možnost 1', 'Možnost 2']) {
-            const list = document.getElementById('optionsList');
-            list.innerHTML = '';
-            options.forEach((opt) => {
-                const div = document.createElement('div');
-                div.className = "flex items-center space-x-2";
-                div.innerHTML = `
-                    <input type="text" value="${opt}" class="mc-option-input flex-grow p-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-sm">
-                    <button onclick="this.parentElement.remove()" class="text-slate-400 hover:text-red-500"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
-                `;
-                list.appendChild(div);
-            });
-            lucide.createIcons();
-        }
-
-        function addOptionInput() {
-            const list = document.getElementById('optionsList');
-            const div = document.createElement('div');
-            div.className = "flex items-center space-x-2";
-            div.innerHTML = `
-                <input type="text" placeholder="Nová možnost" class="mc-option-input flex-grow p-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-sm">
-                <button onclick="this.parentElement.remove()" class="text-slate-400 hover:text-red-500"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+        function addQuestionField() {
+            const container = document.getElementById('questionsContainer');
+            const qIndex = container.children.length;
+            const qDiv = document.createElement('div');
+            qDiv.className = "p-4 border border-slate-200 dark:border-slate-700 rounded-xl space-y-3 bg-slate-50 dark:bg-slate-800/40";
+            qDiv.innerHTML = `
+                <div class="flex justify-between items-center">
+                    <span class="text-xs font-bold text-slate-500">Otázka ${qIndex + 1}</span>
+                    <button type="button" class="remove-q-btn text-rose-500 text-xs font-bold">Odstranit</button>
+                </div>
+                <input type="text" class="q-text w-full p-2 border rounded-lg dark:bg-slate-700 dark:border-slate-600 text-sm" placeholder="Text otázky...">
+                <select class="q-type w-full p-2 border rounded-lg dark:bg-slate-700 dark:border-slate-600 text-sm">
+                    <option value="mc">Výběr z možností (A, B, C...)</option>
+                    <option value="text">Otevřená textová odpověď</option>
+                    <option value="cloud">Slovní mrak</option>
+                    <option value="rating">Hodnocení (1-5 hvězd)</option>
+                </select>
+                <input type="text" class="q-options w-full p-2 border rounded-lg dark:bg-slate-700 dark:border-slate-600 text-xs" placeholder="Možnosti oddělené čárkou (pouze pro výběr)">
             `;
-            list.appendChild(div);
-            lucide.createIcons();
+
+            qDiv.querySelector('.remove-q-btn').addEventListener('click', () => qDiv.remove());
+            container.appendChild(qDiv);
         }
 
-        function saveQuestion() {
-            if (currentQuestionIndex < 0) return;
-            const type = document.getElementById('questionType').value;
-            const text = document.getElementById('questionText').value;
-            const maxResponses = document.getElementById('maxResponsesSelect').value;
-            let options = [];
+        async function savePoll() {
+            const title = document.getElementById('pollTitleInput').value.trim();
+            if (!title) return alert("Zadejte prosím název sady.");
 
-            if (type === 'mc') {
-                const inputs = document.querySelectorAll('.mc-option-input');
-                inputs.forEach(inp => { if(inp.value.trim()) options.push(inp.value.trim()); });
-            }
+            const qElements = document.querySelectorAll('#questionsContainer > div');
+            const questions = [];
 
-            if (questions.length === 0) {
-                questions.push({
-                    id: "q_" + Date.now(),
-                    type: type,
-                    text: text,
-                    options: options,
-                    maxResponses: maxResponses || '1',
-                    imageUrl: currentUploadedImageBase64
-                });
-                currentQuestionIndex = 0;
-            } else {
-                questions[currentQuestionIndex] = {
-                    id: questions[currentQuestionIndex]?.id || "q_" + Date.now(),
-                    type: type,
-                    text: text,
-                    options: options,
-                    maxResponses: maxResponses || '1',
-                    imageUrl: currentUploadedImageBase64
-                };
-            }
+            qElements.forEach((el, i) => {
+                const text = el.querySelector('.q-text').value.trim();
+                const type = el.querySelector('.q-type').value;
+                const optionsRaw = el.querySelector('.q-options').value;
+                const options = optionsRaw ? optionsRaw.split(',').map(o => o.trim()) : [];
 
-            renderQuestionsList();
-        }
-
-        function loadCurrentQuestionToEditor() {
-            if (questions.length === 0) return;
-            if (currentQuestionIndex < 0) currentQuestionIndex = 0;
-            const q = questions[currentQuestionIndex];
-            if (!q) return;
-
-            document.getElementById('questionCounter').innerText = `Otázka ${currentQuestionIndex + 1}`;
-            document.getElementById('questionType').value = q.type;
-            document.getElementById('questionText').value = q.text;
-            document.getElementById('maxResponsesSelect').value = q.maxResponses || '1';
-            
-            currentUploadedImageBase64 = q.imageUrl || null;
-            showImagePreview(currentUploadedImageBase64);
-
-            changeQuestionType();
-            if (q.type === 'mc') {
-                renderOptionsInputs(q.options || []);
-            }
-        }
-
-        function renderQuestionsList() {
-            const container = document.getElementById('questionsList');
-            const emptyState = document.getElementById('emptyState');
-            container.innerHTML = '';
-
-            if (questions.length === 0) {
-                emptyState.classList.remove('hidden');
-                emptyState.classList.add('flex');
-                return;
-            } else {
-                emptyState.classList.add('hidden');
-                emptyState.classList.remove('flex');
-            }
-
-            questions.forEach((q, idx) => {
-                const btn = document.createElement('button');
-                btn.className = `w-full text-left p-2.5 rounded-lg text-sm font-medium transition flex items-center justify-between ${idx === currentQuestionIndex ? 'bg-sky-100 dark:bg-sky-900/40 text-sky-700 dark:text-sky-300' : 'hover:bg-slate-100 dark:hover:bg-slate-700'}`;
-                btn.onclick = () => {
-                    saveQuestion();
-                    currentQuestionIndex = idx;
-                    loadCurrentQuestionToEditor();
-                    renderQuestionsList();
-                };
-                btn.innerHTML = `
-                    <span class="truncate flex items-center gap-1.5">
-                        ${q.imageUrl ? '<i data-lucide="image" class="w-3.5 h-3.5 text-sky-500"></i>' : ''}
-                        <span>${idx + 1}. ${q.text || 'Bez názvu'}</span>
-                    </span>
-                    <span class="text-xs uppercase bg-slate-200 dark:bg-slate-600 px-1.5 py-0.5 rounded text-slate-600 dark:text-slate-300">${q.type}</span>
-                `;
-                container.appendChild(btn);
-            });
-            lucide.createIcons();
-        }
-
-        function addNewQuestion() {
-            if (questions.length > 0) saveQuestion();
-            
-            questions.push({
-                id: "q_" + Date.now(),
-                type: 'mc',
-                text: '',
-                options: ['Možnost 1', 'Možnost 2'],
-                maxResponses: '1',
-                imageUrl: null
-            });
-            currentQuestionIndex = questions.length - 1;
-            loadCurrentQuestionToEditor();
-            renderQuestionsList();
-        }
-
-        function deleteCurrentQuestion() {
-            if (questions.length === 0) return;
-            questions.splice(currentQuestionIndex, 1);
-            currentQuestionIndex = Math.max(0, currentQuestionIndex - 1);
-            
-            if (questions.length > 0) {
-                loadCurrentQuestionToEditor();
-            } else {
-                document.getElementById('questionText').value = '';
-                document.getElementById('questionCounter').innerText = 'Otázka 1';
-                removeQuestionImage();
-            }
-            renderQuestionsList();
-        }
-
-        function changePaceModeFromPrep() {
-            paceMode = document.getElementById('paceModePrepSelect').value;
-        }
-
-        // --- PREZENTACE ---
-        async function startPresentation() {
-            if (questions.length === 0) {
-                alert("Před spuštěním prezentace prosím vytvořte alespoň jednu otázku.");
-                return;
-            }
-
-            saveQuestion();
-            resultsHidden = true;
-            updateResultsToggleButtonUI();
-
-            document.getElementById('teacherView').classList.add('hidden');
-            document.getElementById('presentationView').classList.remove('hidden');
-            
-            currentQuestionIndex = -1;
-            
-            const directJoinUrl = `${window.location.origin}${window.location.pathname}?pin=${currentSessionPin}`;
-
-            document.getElementById('teacherPin').innerText = currentSessionPin;
-            document.getElementById('presPin').innerText = currentSessionPin;
-            document.getElementById('presWebUrl').innerText = DISPLAY_SHORT_URL;
-            document.getElementById('introFullUrl').innerText = DISPLAY_SHORT_URL;
-            document.getElementById('introPinDisplay').innerText = currentSessionPin;
-            document.getElementById('modalPinDisplay').innerText = currentSessionPin;
-
-            generateQrCodes(directJoinUrl);
-            
-            if (window.db) {
-                const { doc, setDoc } = window.fbModules;
-                await setDoc(doc(window.db, "sessions", currentSessionPin), {
-                    answers: sessionAnswers || [],
-                    participants: {},
-                    allQuestions: questions,
-                    currentQuestion: null,
-                    paceMode: paceMode,
-                    pin: currentSessionPin,
-                    updatedAt: Date.now()
-                }, { merge: true });
-            }
-
-            updatePresentationView();
-            listenToPresentationAnswers(currentSessionPin);
-        }
-
-        function generateQrCodes(url) {
-            const introContainer = document.getElementById('introQrCode');
-            const modalContainer = document.getElementById('modalQrCode');
-
-            introContainer.innerHTML = '';
-            modalContainer.innerHTML = '';
-
-            new QRCode(introContainer, {
-                text: url,
-                width: 180,
-                height: 180,
-                colorDark: "#0284c7",
-                colorLight: "#ffffff"
-            });
-
-            new QRCode(modalContainer, {
-                text: url,
-                width: 200,
-                height: 200,
-                colorDark: "#0284c7",
-                colorLight: "#ffffff"
-            });
-        }
-
-        function toggleHideResults() {
-            resultsHidden = !resultsHidden;
-            updateResultsToggleButtonUI();
-            updatePresentationView();
-        }
-
-        function updateResultsToggleButtonUI() {
-            const icon = document.getElementById('hideIcon');
-            const text = document.getElementById('hideText');
-            const btn = document.getElementById('toggleHideResultsBtn');
-
-            if (resultsHidden) {
-                icon.setAttribute('data-lucide', 'eye');
-                text.innerText = "Odkrýt výsledky";
-                btn.className = "px-3 py-1.5 bg-sky-600 hover:bg-sky-700 text-white rounded-lg text-xs font-semibold flex items-center space-x-1 transition shadow";
-            } else {
-                icon.setAttribute('data-lucide', 'eye-off');
-                text.innerText = "Skrýt výsledky";
-                btn.className = "px-3 py-1.5 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 rounded-lg text-xs font-semibold flex items-center space-x-1 transition";
-            }
-            lucide.createIcons();
-        }
-
-        function closePresentation() {
-            document.getElementById('presentationView').classList.add('hidden');
-            document.getElementById('teacherView').classList.remove('hidden');
-            currentQuestionIndex = 0;
-        }
-
-        function openQrModal() { document.getElementById('qrModal').classList.remove('hidden'); }
-        function closeQrModal() { document.getElementById('qrModal').classList.add('hidden'); }
-
-        function updatePresentationView() {
-            const introSlide = document.getElementById('introSlide');
-            const questionSlide = document.getElementById('questionSlide');
-
-            if (currentQuestionIndex === -1) {
-                introSlide.classList.remove('hidden');
-                questionSlide.classList.add('hidden');
-                return;
-            }
-
-            introSlide.classList.add('hidden');
-            questionSlide.classList.remove('hidden');
-
-            const q = questions[currentQuestionIndex];
-            document.getElementById('presQuestionTitle').innerText = q ? `${currentQuestionIndex + 1}. ${q.text}` : '';
-            
-            const imgContainer = document.getElementById('presImageContainer');
-            const img = document.getElementById('presQuestionImage');
-            if (q && q.imageUrl) {
-                img.src = q.imageUrl;
-                imgContainer.classList.remove('hidden');
-            } else {
-                imgContainer.classList.add('hidden');
-            }
-
-            const container = document.getElementById('presResultsContainer');
-            container.innerHTML = '';
-
-            if (!q) return;
-
-            if (resultsHidden) {
-                container.innerHTML = `
-                    <div class="text-center py-12 space-y-3 text-slate-400">
-                        <i data-lucide="eye-off" class="w-16 h-16 mx-auto animate-bounce text-sky-500"></i>
-                        <h3 class="text-xl font-semibold text-slate-700 dark:text-slate-200">Výsledky jsou skryté</h3>
-                        <p class="text-sm">Účastníci právě odpovídají. Pro odhalení klikněte na "Odkrýt výsledky" nahoře.</p>
-                    </div>
-                `;
-                lucide.createIcons();
-                return;
-            }
-
-            const filteredAnswers = sessionAnswers.filter(a => String(a.questionId) === String(q.id));
-
-            if (q.type === 'mc') {
-                const counts = {};
-                filteredAnswers.forEach(a => { counts[a.answer] = (counts[a.answer] || 0) + 1; });
-                const total = filteredAnswers.length;
-
-                const wrapper = document.createElement('div');
-                wrapper.className = "w-full space-y-4 max-w-xl mx-auto";
-                (q.options || []).forEach(opt => {
-                    const count = counts[opt] || 0;
-                    const percent = total > 0 ? Math.round((count / total) * 100) : 0;
-                    wrapper.innerHTML += `
-                        <div class="space-y-1">
-                            <div class="flex justify-between text-sm font-semibold">
-                                <span>${opt}</span>
-                                <span class="text-slate-500">${count} (${percent}%)</span>
-                            </div>
-                            <div class="w-full bg-slate-100 dark:bg-slate-700 h-5 rounded-full overflow-hidden border border-slate-200 dark:border-slate-600">
-                                <div class="bg-sky-600 h-full transition-all duration-500 rounded-full" style="width: ${percent}%"></div>
-                            </div>
-                        </div>
-                    `;
-                });
-                container.appendChild(wrapper);
-            } else if (q.type === 'cloud') {
-                const wordCounts = {};
-                filteredAnswers.forEach(a => {
-                    const word = String(a.answer).trim();
-                    if(word) wordCounts[word] = (wordCounts[word] || 0) + 1;
-                });
-
-                if (Object.keys(wordCounts).length === 0) {
-                    container.innerHTML = `<p class="text-slate-400 text-sm">Zatím žádné odpovědi...</p>`;
-                } else {
-                    const wrapper = document.createElement('div');
-                    wrapper.className = "flex flex-wrap justify-center items-center p-4 gap-3";
-                    
-                    const palette = [
-                        '#0284c7', '#059669', '#d97706', '#dc2626', '#7c3aed', 
-                        '#db2777', '#0891b2', '#ea580c', '#4f46e5', '#16a34a'
-                    ];
-
-                    Object.entries(wordCounts).forEach(([word, count], i) => {
-                        const size = Math.min(1.2 + count * 0.4, 3.5);
-                        const color = palette[i % palette.length];
-                        wrapper.innerHTML += `<span class="word-cloud-item font-extrabold px-3 py-1 rounded-xl bg-slate-100 dark:bg-slate-700/50 shadow-sm" style="font-size: ${size}rem; color: ${color};">${word}</span>`;
+                if (text) {
+                    questions.push({
+                        id: 'q_' + Date.now() + '_' + i,
+                        text,
+                        type,
+                        options
                     });
-                    container.appendChild(wrapper);
-                }
-            } else if (q.type === 'rating') {
-                const vals = filteredAnswers.map(a => Number(a.answer)).filter(n => !isNaN(n));
-                const avg = vals.length ? (vals.reduce((a,b)=>a+b,0)/vals.length).toFixed(1) : '0';
-                container.innerHTML = `
-                    <div class="text-center space-y-2">
-                        <div class="text-7xl font-extrabold text-amber-500 tracking-tight">${avg} <span class="text-2xl text-slate-400 font-normal">/ 5</span></div>
-                        <p class="text-slate-500 text-sm font-medium">Celkem hodnocení: ${vals.length}</p>
-                    </div>
-                `;
-            } else {
-                if (filteredAnswers.length === 0) {
-                    container.innerHTML = `<p class="text-slate-400 text-sm">Zatím žádné odpovědi...</p>`;
-                } else {
-                    const wrapper = document.createElement('div');
-                    wrapper.className = "grid grid-cols-1 md:grid-cols-2 gap-3 w-full max-w-2xl max-h-72 overflow-y-auto p-1";
-                    filteredAnswers.forEach(a => {
-                        wrapper.innerHTML += `<div class="p-3 bg-slate-100 dark:bg-slate-700/80 rounded-xl border border-slate-200 dark:border-slate-600 shadow-sm text-sm font-medium"><strong>${a.student || 'Účastník'}:</strong> ${a.answer}</div>`;
-                    });
-                    container.appendChild(wrapper);
-                }
-            }
-        }
-
-        function nextPresQuestion() {
-            if (currentQuestionIndex < questions.length - 1) {
-                currentQuestionIndex++;
-                resultsHidden = true;
-                updateResultsToggleButtonUI();
-                updatePresentationView();
-                syncStateToFirebase();
-            }
-        }
-
-        function prevPresQuestion() {
-            if (currentQuestionIndex > -1) {
-                currentQuestionIndex--;
-                resultsHidden = true;
-                updateResultsToggleButtonUI();
-                updatePresentationView();
-                syncStateToFirebase();
-            }
-        }
-
-        function listenToPresentationAnswers(pin) {
-            if (!window.db) return;
-            const { doc, onSnapshot } = window.fbModules;
-            onSnapshot(doc(window.db, "sessions", pin), (docSnap) => {
-                if (docSnap.exists()) {
-                    const data = docSnap.data();
-                    sessionAnswers = data.answers || [];
-                    
-                    participantsCount = calculateUniqueParticipants(sessionAnswers);
-                    document.getElementById('presCount').innerText = `Účastníci: ${participantsCount}`;
-
-                    updatePresentationView();
-                    updateStudentResponseState();
                 }
             });
-        }
 
-        // --- ŽÁKOVSKÁ LOGIKA ---
-        function joinSession() {
-            const pin = document.getElementById('joinPinInput').value.trim();
-            const name = document.getElementById('joinNameInput').value.trim();
+            if (questions.length === 0) return alert("Přidejte alespoň jednu platnou otázku.");
 
-            if (!pin || !name) return alert('Zadejte PIN i jméno');
-
-            currentStudentName = name;
-            document.getElementById('studentJoinCard').classList.add('hidden');
-            document.getElementById('studentPollCard').classList.remove('hidden');
-            document.getElementById('studentRoomPin').innerText = `PIN: ${pin}`;
-
-            listenToFirebaseSession(pin);
-        }
-
-        function renderStudentQuestion(q) {
-            const activeCard = document.getElementById('studentActiveQuestion');
-            const waitingCard = document.getElementById('studentWaiting');
-
-            if (!q) {
-                waitingCard.classList.remove('hidden');
-                activeCard.classList.add('hidden');
-                return;
-            }
-
-            waitingCard.classList.add('hidden');
-            activeCard.classList.remove('hidden');
-            document.getElementById('studentQuestionTitle').innerText = q.text;
-
-            const imgContainer = document.getElementById('studentImageContainer');
-            const img = document.getElementById('studentQuestionImage');
-            if (q.imageUrl) {
-                img.src = q.imageUrl;
-                imgContainer.classList.remove('hidden');
-            } else {
-                imgContainer.classList.add('hidden');
-            }
-
-            const area = document.getElementById('studentAnswerArea');
-            area.innerHTML = '';
-
-            if (q.type === 'mc') {
-                (q.options || []).forEach(opt => {
-                    area.innerHTML += `
-                        <label class="flex items-center space-x-3 p-3.5 border border-slate-200 dark:border-slate-700 rounded-xl cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700 transition">
-                            <input type="radio" name="studentAnswer" value="${opt}" class="w-4 h-4 text-sky-600">
-                            <span class="font-medium">${opt}</span>
-                        </label>
-                    `;
+            try {
+                await addDoc(collection(db, "polls"), {
+                    userId: window.currentUser.uid,
+                    title,
+                    questions,
+                    savedAnswers: [],
+                    createdAt: Date.now()
                 });
-            } else if (q.type === 'rating') {
-                area.innerHTML = `
-                    <div class="flex justify-between max-w-xs mx-auto py-2">
-                        ${[1,2,3,4,5].map(n => `
-                            <label class="text-center cursor-pointer">
-                                <input type="radio" name="studentAnswer" value="${n}" class="sr-only peer">
-                                <div class="w-12 h-12 rounded-2xl border-2 border-slate-200 dark:border-slate-700 flex items-center justify-center peer-checked:bg-sky-600 peer-checked:border-sky-600 peer-checked:text-white font-bold text-lg transition">${n}</div>
-                            </label>
-                        `).join('')}
-                    </div>
-                `;
-            } else {
-                area.innerHTML = `<input type="text" id="studentTextInput" placeholder="Napište vaši odpověď..." class="w-full p-3.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 focus:ring-2 focus:ring-sky-500 outline-none">`;
+                closeCreateModal();
+            } catch (e) {
+                console.error("Chyba při ukládání sady:", e);
             }
-
-            updateStudentResponseState();
-        }
-
-        function updateStudentResponseState() {
-            const q = (paceMode === 'student') ? questions[studentCurrentQuestionIndex] : activeStudentQuestion;
-            if (!q) return;
-
-            const myAnswers = sessionAnswers.filter(a => String(a.questionId) === String(q.id) && a.student === currentStudentName);
-            const count = myAnswers.length;
-            const max = q.maxResponses || '1';
-
-            const submitBtn = document.getElementById('submitAnswerBtn');
-            const submittedMsg = document.getElementById('studentSubmittedMessage');
-            const countText = document.getElementById('studentResponseCountText');
-
-            if (max !== 'unlimited' && count >= parseInt(max, 10)) {
-                submitBtn.classList.add('hidden');
-                submittedMsg.classList.remove('hidden');
-                countText.innerText = `Odesláno ${count} z ${max} odpovědí. Děkujeme!`;
-            } else {
-                submitBtn.classList.remove('hidden');
-                if (count > 0) {
-                    submittedMsg.classList.remove('hidden');
-                    countText.innerText = max === 'unlimited' 
-                        ? `Odesláno ${count} odpovědí. Můžete poslat další!` 
-                        : `Odesláno ${count} z ${max} odpovědí. Můžete poslat ještě další.`;
-                } else {
-                    submittedMsg.classList.add('hidden');
-                }
-            }
-        }
-
-        function studentNextQuestion() {
-            if (studentCurrentQuestionIndex < questions.length - 1) {
-                studentCurrentQuestionIndex++;
-                updateStudentViewSelfPaced();
-            }
-        }
-
-        function studentPrevQuestion() {
-            if (studentCurrentQuestionIndex > 0) {
-                studentCurrentQuestionIndex--;
-                updateStudentViewSelfPaced();
-            }
-        }
-
-        function updateStudentViewSelfPaced() {
-            document.getElementById('studentQuestionIndexLabel').innerText = `${studentCurrentQuestionIndex + 1} z ${questions.length}`;
-            activeStudentQuestion = questions[studentCurrentQuestionIndex];
-            renderStudentQuestion(activeStudentQuestion);
-        }
-
-        async function submitAnswer() {
-            let val = null;
-            const q = (paceMode === 'student') ? questions[studentCurrentQuestionIndex] : activeStudentQuestion;
-
-            if (!q) return alert("Není aktivní žádná otázka.");
-
-            if (q.type === 'mc' || q.type === 'rating') {
-                const checked = document.querySelector('input[name="studentAnswer"]:checked');
-                if (checked) val = checked.value;
-            } else {
-                const inp = document.getElementById('studentTextInput');
-                if (inp) val = inp.value.trim();
-            }
-
-            if (!val) return alert('Vyberte nebo napište odpověď.');
-
-            if (window.db) {
-                const { doc, setDoc, arrayUnion } = window.fbModules;
-                const pin = document.getElementById('joinPinInput').value.trim();
-                const sessionRef = doc(window.db, "sessions", pin);
-
-                try {
-                    await setDoc(sessionRef, {
-                        answers: arrayUnion({
-                            questionId: q.id,
-                            answer: val,
-                            student: currentStudentName,
-                            timestamp: Date.now()
-                        })
-                    }, { merge: true });
-
-                    const inp = document.getElementById('studentTextInput');
-                    if (inp) inp.value = '';
-
-                } catch (e) {
-                    console.error("Chyba odeslání:", e);
-                    alert("Chyba při odesílání odpovědi.");
-                }
-            }
-        }
-
-        function syncStateToFirebase() {
-            if (!window.db) return;
-            const { doc, setDoc } = window.fbModules;
-            const sessionRef = doc(window.db, "sessions", currentSessionPin);
-            
-            const activeQ = currentQuestionIndex >= 0 ? questions[currentQuestionIndex] : null;
-
-            setDoc(sessionRef, {
-                currentQuestion: activeQ,
-                allQuestions: questions,
-                paceMode: paceMode,
-                pin: currentSessionPin,
-                updatedAt: Date.now()
-            }, { merge: true });
-        }
-
-        function listenToFirebaseSession(pin) {
-            if (!window.db) return;
-            const { doc, onSnapshot, setDoc } = window.fbModules;
-
-            const sessionRef = doc(window.db, "sessions", pin);
-            const sanitizedName = currentStudentName.replace(/[\.\/\[\]\$#]/g, '_');
-            const participantData = { participants: {} };
-            participantData.participants[sanitizedName] = true;
-            
-            setDoc(sessionRef, participantData, { merge: true });
-
-            onSnapshot(sessionRef, (docSnap) => {
-                if (docSnap.exists()) {
-                    const data = docSnap.data();
-                    
-                    sessionAnswers = data.answers || [];
-                    if (data.allQuestions) questions = data.allQuestions;
-                    paceMode = data.paceMode || 'teacher';
-
-                    const nav = document.getElementById('studentSelfPacedNav');
-
-                    if (paceMode === 'student') {
-                        nav.classList.remove('hidden');
-                        updateStudentViewSelfPaced();
-                    } else {
-                        nav.classList.add('hidden');
-                        activeStudentQuestion = data.currentQuestion;
-                        renderStudentQuestion(data.currentQuestion);
-                    }
-                }
-            });
-        }
-
-        window.addEventListener('DOMContentLoaded', () => {
-            document.getElementById('teacherPin').innerText = currentSessionPin;
-            renderQuestionsList();
-            loadCurrentQuestionToEditor();
-
-            const urlParams = new URLSearchParams(window.location.search);
-            const pinParam = urlParams.get('pin');
-            const roleParam = urlParams.get('role');
-
-            if (pinParam) {
-                showStudentView();
-                document.getElementById('joinPinInput').value = pinParam;
-            } else if (roleParam === 'student') {
-                showStudentView();
-            }
-        });
-
-        // AUTH MODAL LOGIKA
-        function showAuthError(msg) {
-            const errDiv = document.getElementById('authError');
-            errDiv.innerText = msg;
-            errDiv.classList.remove('hidden');
-        }
-
-        function clearAuthError() {
-            const errDiv = document.getElementById('authError');
-            errDiv.innerText = '';
-            errDiv.classList.add('hidden');
-        }
-
-        function openAuthModal() { clearAuthError(); document.getElementById('authModal').classList.remove('hidden'); }
-        function closeAuthModal() { clearAuthError(); document.getElementById('authModal').classList.add('hidden'); }
-
-        function loginWithGoogle() {
-            clearAuthError();
-            if (!window.auth) return showAuthError("Firebase není inicializován.");
-            const { signInWithPopup, GoogleAuthProvider } = window.fbModules;
-            
-            const provider = new GoogleAuthProvider();
-            // Vynucení výběru účtu při přihlášení Googlem
-            provider.setCustomParameters({
-                prompt: 'select_account'
-            });
-
-            signInWithPopup(window.auth, provider)
-                .then(res => { closeAuthModal(); updateAuthUI(res.user); })
-                .catch(err => showAuthError(err.message || "Nepodařilo se přihlásit přes Google."));
-        }
-
-        function loginEmail() {
-            clearAuthError();
-            const e = document.getElementById('authEmail').value;
-            const p = document.getElementById('authPassword').value;
-            if (!e || !p) return showAuthError("Zadejte e-mail a heslo.");
-            const { signInWithEmailAndPassword } = window.fbModules;
-            signInWithEmailAndPassword(window.auth, e, p)
-                .then(res => { closeAuthModal(); updateAuthUI(res.user); })
-                .catch(err => showAuthError(err.message));
-        }
-
-        function registerEmail() {
-            clearAuthError();
-            const e = document.getElementById('authEmail').value;
-            const p = document.getElementById('authPassword').value;
-            if (!e || !p) return showAuthError("Zadejte e-mail a heslo.");
-            const { createUserWithEmailAndPassword } = window.fbModules;
-            createUserWithEmailAndPassword(window.auth, e, p)
-                .then(res => { closeAuthModal(); updateAuthUI(res.user); })
-                .catch(err => showAuthError(err.message));
-        }
-
-        function updateAuthUI(user) {
-            const statusDiv = document.getElementById('authStatus');
-            if (user) {
-                statusDiv.innerHTML = `
-                    <span class="text-sm font-medium hidden sm:inline">${user.displayName || user.email}</span>
-                    <button onclick="logout()" class="px-3 py-1.5 bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-xs font-semibold rounded-lg transition flex items-center gap-1">
-                        <i data-lucide="log-out" class="w-3.5 h-3.5"></i>
-                        <span>Odhlásit</span>
-                    </button>
-                `;
-            } else {
-                statusDiv.innerHTML = `<button onclick="openAuthModal()" class="px-3 py-1.5 bg-sky-600 text-white rounded-lg text-sm font-medium hover:bg-sky-700 transition">Přihlásit se</button>`;
-            }
-            lucide.createIcons();
-        }
-
-        function logout() {
-            if (!window.auth) return;
-            const { signOut } = window.fbModules;
-            signOut(window.auth).then(() => {
-                updateAuthUI(null);
-                window.currentUser = null;
-                loadUserPolls();
-            }).catch(err => console.error("Chyba při odhlašování:", err));
         }
     </script>
 </body>
